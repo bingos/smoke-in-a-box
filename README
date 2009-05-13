@@ -1,4 +1,24 @@
 Smoke in a box
 ==============
 
-CPANPLUS testing in a box
+CPANPLUS and CPANPLUS::YACSmoke based CPAN testing in a box
+
+Based on CPANPLUS' cpanp-boxed, Smoke-in-a-box comes bundled with all
+necessary modules required to smoke CPAN distributions and report
+the results.
+
+download, extract.
+
+  perl bin/cpanp-boxed
+
+  > s conf email your@email.address
+
+  > s conf cpantest_mx your_email_relay 	# optional
+
+  > s save boxed
+
+  > q
+
+  perl bin/yactest-boxed
+
+  And a way you go.
