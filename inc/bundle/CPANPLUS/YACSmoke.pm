@@ -44,7 +44,7 @@ $VERSION = '0.34';
 sub _connect_db {
   my $self = shift;
   return if $TiedObj;
-  my $filename = catfile( CPANPLUS::Internals::Utils->_home_dir(), '.cpanplus', DATABASE_FILE );
+  my $filename = catfile( $self->{conf}->get_conf('base'), DATABASE_FILE );
   $TiedObj = tie %Checked, 'SDBM_File', $filename, O_CREAT|O_RDWR, 0644;
   $self->{checked} = \%Checked;
 }

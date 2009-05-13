@@ -59,12 +59,13 @@ my %throw_away;
 
     return 1 if $TiedObj;
 
-    my $filename = catfile( CPANPLUS::Internals::Utils->_home_dir(), '.cpanplus', DATABASE_FILE );
+    my $base_dir = $conf->get_conf('base');
+    my $filename = catfile( $base_dir, DATABASE_FILE );
     msg(qq{Loading YACSmoke database "$filename"});
     $TiedObj = tie( %Checked, 'SDBM_File', $filename, O_CREAT|O_RDWR, 0644 )
 	or error(qq{Failed to open "$filename": $!});
 
-    my $config_file = catfile( CPANPLUS::Internals::Utils->_home_dir(), '.cpanplus', CONFIG_FILE );
+    my $config_file = catfile( $base_dir, CONFIG_FILE );
     if ( -r $config_file ) {
        my $cfg = Config::IniFiles->new(-file => $config_file);
        my @list = $cfg->val( 'CONFIG', 'exclude_dists' );
