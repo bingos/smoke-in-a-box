@@ -1,0 +1,13 @@
+use strict;
+use inc::Module::Install;
+name 'SmokeInABox';
+author 'Chris Williams <chris@bingosnet.co.uk>';
+version_from 'lib/App/Smoke/In/A/Box.pm';
+abstract_from 'lib/App/Smoke/In/A/Box.pm';
+license 'perl';
+auto_license holder => 'Chris Williams';
+perl_version '5.006';
+githubmeta;
+no_index directory => 'cpansmokebox';
+no_auto_test;
+WriteAll();
