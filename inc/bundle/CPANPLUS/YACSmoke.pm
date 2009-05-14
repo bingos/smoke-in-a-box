@@ -336,7 +336,8 @@ sub _is_excluded_dist {
 sub _download_list {
   my $self  = shift;
 
-  my $local = catfile( $self->{conf}->get_conf('base'), RECENT_FILE );
+  my $path = $self->{conf}->get_conf('base');
+  my $local = catfile( $path, RECENT_FILE );
 
   my $hosts = $self->{conf}->get_conf('hosts');
   my $h_ind = 0;
