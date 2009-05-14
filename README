@@ -9,7 +9,7 @@ the results.
 
 =======================================================================
 $ git clone git://github.com/bingos/smoke-in-a-box.git
-$ cd smoke-in-a-box/
+$ cd smoke-in-a-box/cpansmokebox/
 $ perl bin/cpanp-boxed
 CPAN Terminal> s conf email your@email.address
 
