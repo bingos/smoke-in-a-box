@@ -7,6 +7,12 @@ Based on CPANPLUS' cpanp-boxed, Smoke-in-a-box comes bundled with all
 necessary modules required to smoke CPAN distributions and report
 the results.
 
+From the CPAN distribution:
+
+Download from CPAN
+
+Extract it, change directory and run Makefile.PL
+
 =======================================================================
 $ git clone git://github.com/bingos/smoke-in-a-box.git
 $ cd smoke-in-a-box/cpansmokebox/
