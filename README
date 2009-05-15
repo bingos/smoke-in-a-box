@@ -9,31 +9,8 @@ the results.
 
 From the CPAN distribution:
 
-Download from CPAN
+Download from CPAN or git clone git://github.com/bingos/smoke-in-a-box.git
 
 Extract it, change directory and run Makefile.PL
-
-=======================================================================
-$ git clone git://github.com/bingos/smoke-in-a-box.git
-$ cd smoke-in-a-box/cpansmokebox/
-$ perl bin/cpanp-boxed
-CPAN Terminal> s conf email your@email.address
-
-Key 'email' was set to 'your@email.address'
-CPAN Terminal> s conf cpantest_mx my.mail.gateway       # optional
-
-Key 'cpantest_mx' was set to 'my.mail.gateway'
-CPAN Terminal> s save boxed
-
-Configuration successfully saved to CPANPLUS::Config::Boxed
-CPAN Terminal> quit
-
-
-Exiting CPANPLUS shell
-
-$ perl bin/yactest-boxed
-
-# Smoking happens
-=======================================================================
 
 Enjoy.
