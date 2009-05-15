@@ -16,17 +16,10 @@ App::Smoke::In::A::Box - CPAN Tester smoke environment boxed
 
 =head1 SYNOPSIS
 
-  $ cd cpansmokebox
+  $ /path/to/perl Makefile.PL 
+  # answer the questions etc
 
-  $ /path/to/perl bin/cpanp-boxed
-
-  CPAN Terminal> s conf email your@email.address
-
-  CPAN Terminal> s conf cpantest_mx my.email.gateway # optional
-
-  CPAN Terminal> s save boxed
-
-  CPAN Terminal> q
+  $ cd ~/cpansmokebox
 
   $ /path/to/perl bin/yactest-boxed
 

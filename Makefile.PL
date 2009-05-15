@@ -6,6 +6,7 @@ use Cwd;
 name 'Smoke-In-A-Box';
 author 'Chris Williams <chris@bingosnet.co.uk>';
 version_from 'lib/App/Smoke/In/A/Box.pm';
+readme_from 'lib/App/Smoke/In/A/Box.pm';
 abstract 'CPAN Tester smoke environment boxed';
 configure_requires 'ExtUtils::Install' => 1.52;
 perl_version '5.006';
