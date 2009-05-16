@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use vars qw($VERSION);
 
-$VERSION = '0.02';
+$VERSION = '0.01_01';
 
 'Smokebox';
 
@@ -75,5 +75,7 @@ Copyright E<copy> Chris Williams
 This module may be used, modified, and distributed under the same terms as Perl itself. Please see the license that came with your Perl distribution for details.
 
 =head1 SEE ALSO
+
+L<CPANPLUS>
 
 =cut
