@@ -1,4 +1,5 @@
 Changes
+bin/smokeinabox
 cpansmokebox/bin/cpan2dist
 cpansmokebox/bin/cpanp
 cpansmokebox/bin/cpanp-boxed

@@ -3,11 +3,13 @@ use inc::Module::Install;
 use ExtUtils::Install;
 use File::Spec;
 use Cwd;
-name 'Smoke-In-A-Box';
+name 'smokeinabox';
 author 'Chris Williams <chris@bingosnet.co.uk>';
 version_from 'lib/App/Smoke/In/A/Box.pm';
 readme_from 'lib/App/Smoke/In/A/Box.pm';
-abstract 'CPAN Tester smoke environment boxed';
+#abstract 'CPAN Tester smoke environment boxed';
+abstract_from 'bin/smokeinabox';
+install_script 'bin/smokeinabox';
 configure_requires 'ExtUtils::Install' => 1.52;
 perl_version '5.006';
 license 'perl';
@@ -15,6 +17,7 @@ auto_license holder => 'Chris Williams';
 githubmeta;
 no_index directory => 'cpansmokebox';
 no_auto_test;
+auto_provides;
 
 unless ( $Module::Install::AUTHOR ) {
 ##########################################################################################
