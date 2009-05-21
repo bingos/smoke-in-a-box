@@ -23,39 +23,6 @@ $Params::Check::VERBOSE = 1;
 
 @ISA = qw[ CPANPLUS::Module::Signature CPANPLUS::Module::Checksums];
 
-=pod
-
-=head1 NAME
-
-CPANPLUS::Module
-
-=head1 SYNOPSIS
-
-    ### get a module object from the CPANPLUS::Backend object
-    my $mod = $cb->module_tree('Some::Module');
-
-    ### accessors
-    $mod->version;
-    $mod->package;
-
-    ### methods
-    $mod->fetch;
-    $mod->extract;
-    $mod->install;
-
-
-=head1 DESCRIPTION
-
-C<CPANPLUS::Module> creates objects from the information in the
-source files. These can then be used to query and perform actions
-on, like fetching or installing.
-
-These objects should only be created internally. For C<fake> objects,
-there's the C<CPANPLUS::Module::Fake> class. To obtain a module object
-consult the C<CPANPLUS::Backend> documentation.
-
-=cut
-
 my $tmpl = {
     module      => { default => '', required => 1 },    # full module name
     version     => { default => '0.0' },                # version number
@@ -98,59 +65,8 @@ my $tmpl = {
 }
 
 
-=pod
-
-=head1 CLASS METHODS
-
-=head2 accessors ()
-
-Returns a list of all accessor methods to the object
-
-=cut
-
 ### *name is an alias, include it explicitly
 sub accessors { return ('name', keys %$tmpl) };
-
-=head1 ACCESSORS
-
-An objects of this class has the following accessors:
-
-=over 4
-
-=item name
-
-Name of the module.
-
-=item module
-
-Name of the module.
-
-=item version
-
-Version of the module. Defaults to '0.0' if none was provided.
-
-=item path
-
-Extended path on the mirror.
-
-=item comment
-
-Any comment about the module -- largely unused.
-
-=item package
-
-The name of the package.
-
-=item description
-
-Description of the module -- only registered modules have this.
-
-=item dslip
-
-The five character dslip string, that represents meta-data of the
-module -- again, only registered modules have this.
-
-=cut
 
 sub dslip {
     my $self    = shift;   
@@ -169,25 +85,6 @@ sub dslip {
 }
 
 
-=pod
-
-=item status
-
-The C<CPANPLUS::Module::Status> object associated with this object.
-(see below).
-
-=item author
-
-The C<CPANPLUS::Module::Author> object associated with this object.
-
-=item parent
-
-The C<CPANPLUS::Internals> object that spawned this module object.
-
-=back
-
-=cut
-
 ### Alias ->name to ->module, for human beings.
 *name = *module;
 
@@ -197,123 +94,6 @@ sub parent {
 
     return $obj;
 }
-
-=head1 STATUS ACCESSORS
-
-C<CPANPLUS> caches a lot of results from method calls and saves data
-it collected along the road for later reuse.
-
-C<CPANPLUS> uses this internally, but it is also available for the end
-user. You can get a status object by calling:
-
-    $modobj->status
-
-You can then query the object as follows:
-
-=over 4
-
-=item installer_type
-
-The installer type used for this distribution. Will be one of
-'makemaker' or 'build'. This determines whether C<CPANPLUS::Dist::MM>
-or C<CPANPLUS::Dist::Build> will be used to build this distribution.
-
-=item dist_cpan
-
-The dist object used to do the CPAN-side of the installation. Either
-a C<CPANPLUS::Dist::MM> or C<CPANPLUS::Dist::Build> object.
-
-=item dist
-
-The custom dist object used to do the operating specific side of the
-installation, if you've chosen to use this. For example, if you've
-chosen to install using the C<ports> format, this may be a
-C<CPANPLUS::Dist::Ports> object.
-
-Undefined if you didn't specify a separate format to install through.
-
-=item prereqs | requires
-
-A hashref of prereqs this distribution was found to have. Will look
-something like this:
-
-    { Carp  => 0.01, strict => 0 }
-
-Might be undefined if the distribution didn't have any prerequisites.
-
-=item configure_requires
-
-Like prereqs, but these are necessary to be installed before the
-build process can even begin.
-
-=item signature
-
-Flag indicating, if a signature check was done, whether it was OK or
-not.
-
-=item extract
-
-The directory this distribution was extracted to.
-
-=item fetch
-
-The location this distribution was fetched to.
-
-=item readme
-
-The text of this distributions README file.
-
-=item uninstall
-
-Flag indicating if an uninstall call was done successfully.
-
-=item created
-
-Flag indicating if the C<create> call to your dist object was done
-successfully.
-
-=item installed
-
-Flag indicating if the C<install> call to your dist object was done
-successfully.
-
-=item checksums
-
-The location of this distributions CHECKSUMS file.
-
-=item checksum_ok
-
-Flag indicating if the checksums check was done successfully.
-
-=item checksum_value
-
-The checksum value this distribution is expected to have
-
-=back
-
-=head1 METHODS
-
-=head2 $self = CPANPLUS::Module->new( OPTIONS )
-
-This method returns a C<CPANPLUS::Module> object. Normal users
-should never call this method directly, but instead use the
-C<CPANPLUS::Backend> to obtain module objects.
-
-This example illustrates a C<new()> call with all required arguments:
-
-        CPANPLUS::Module->new(
-            module  => 'Foo',
-            path    => 'authors/id/A/AA/AAA',
-            package => 'Foo-1.0.tgz',
-            author  => $author_object,
-            _id     => INTERNALS_OBJECT_ID,
-        );
-
-Every accessor is also a valid option to pass to C<new>.
-
-Returns a module object on success and false on failure.
-
-=cut
 
 
 sub new {
@@ -359,58 +139,6 @@ sub _flush {
     $self->status->mk_flush;
     return 1;
 }
-
-=head2 $mod->package_name( [$package_string] )
-
-Returns the name of the package a module is in. For C<Acme::Bleach>
-that might be C<Acme-Bleach>.
-
-=head2 $mod->package_version( [$package_string] )
-
-Returns the version of the package a module is in. For a module
-in the package C<Acme-Bleach-1.1.tar.gz> this would be C<1.1>.
-
-=head2 $mod->package_extension( [$package_string] )
-
-Returns the suffix added by the compression method of a package a
-certain module is in. For a module in C<Acme-Bleach-1.1.tar.gz>, this
-would be C<tar.gz>.
-
-=head2 $mod->package_is_perl_core
-
-Returns a boolean indicating of the package a particular module is in,
-is actually a core perl distribution.
-
-=head2 $mod->module_is_supplied_with_perl_core( [version => $]] )
-
-Returns a boolean indicating whether C<ANY VERSION> of this module
-was supplied with the current running perl's core package.
-
-=head2 $mod->is_bundle
-
-Returns a boolean indicating if the module you are looking at, is
-actually a bundle. Bundles are identified as modules whose name starts
-with C<Bundle::>.
-
-=head2 $mod->is_autobundle;
-
-Returns a boolean indicating if the module you are looking at, is
-actually an autobundle as generated by C<< $cb->autobundle >>. 
-
-=head2 $mod->is_third_party
-
-Returns a boolean indicating whether the package is a known third-party 
-module (i.e. it's not provided by the standard Perl distribution and 
-is not available on the CPAN, but on a third party software provider).
-See L<Module::ThirdParty> for more details.
-
-=head2 $mod->third_party_information
-
-Returns a reference to a hash with more information about a third-party
-module. See the documentation about C<module_information()> in 
-L<Module::ThirdParty> for more details.
-
-=cut
 
 {   ### fetches the test reports for a certain module ###
     my %map = (
@@ -526,16 +254,6 @@ L<Module::ThirdParty> for more details.
     }
 }
 
-=pod
-
-=head2 $clone = $self->clone
-
-Clones the current module object for tinkering with.
-It will have a clean C<CPANPLUS::Module::Status> object, as well as
-a fake C<CPANPLUS::Module::Author> object.
-
-=cut
-
 {   ### accessors dont change during run time, so only compute once
     my @acc = grep !/status/, __PACKAGE__->accessors();
     
@@ -550,16 +268,6 @@ a fake C<CPANPLUS::Module::Author> object.
         return $obj;
     }
 }
-
-=pod
-
-=head2 $where = $self->fetch
-
-Fetches the module from a CPAN mirror.
-Look at L<CPANPLUS::Internals::Fetch::_fetch()> for details on the
-options you can pass.
-
-=cut
 
 sub fetch {
     my $self = shift;
@@ -589,16 +297,6 @@ sub fetch {
     return $where;
 }
 
-=pod
-
-=head2 $path = $self->extract
-
-Extracts the fetched module.
-Look at L<CPANPLUS::Internals::Extract::_extract()> for details on
-the options you can pass.
-
-=cut
-
 sub extract {
     my $self = shift;
     my $cb   = $self->parent;
@@ -620,18 +318,6 @@ sub extract {
     
     return $cb->_extract( @_, module => $self );
 }
-
-=head2 $type = $self->get_installer_type([prefer_makefile => BOOL])
-
-Gets the installer type for this module. This may either be C<build> or
-C<makemaker>. If C<Module::Build> is unavailable or no installer type
-is available, it will fall back to C<makemaker>. If both are available,
-it will pick the one indicated by your config, or by the
-C<prefer_makefile> option you can pass to this function.
-
-Returns the installer type on success, and false on error.
-
-=cut
 
 sub get_installer_type {
     my $self = shift;
@@ -710,22 +396,6 @@ sub get_installer_type {
     return $self->status->installer_type( $type ) if $type;
     return;
 }
-
-=pod
-
-=head2 $dist = $self->dist([target => 'prepare|create', format => DISTRIBUTION_TYPE, args => {key => val}]);
-
-Create a distribution object, ready to be installed.
-Distribution type defaults to your config settings
-
-The optional C<args> hashref is passed on to the specific distribution
-types' C<create> method after being dereferenced.
-
-Returns a distribution object on success, false on failure.
-
-See C<CPANPLUS::Dist> for details.
-
-=cut
 
 sub dist {
     my $self = shift;
@@ -822,71 +492,20 @@ sub dist {
     return $dist;
 }
 
-=pod
-
-=head2 $bool = $mod->prepare( )
- 
-Convenience method around C<install()> that prepares a module 
-without actually building it. This is equivalent to invoking C<install>
-with C<target> set to C<prepare>
-
-Returns true on success, false on failure.
-
-=cut
-
 sub prepare { 
     my $self = shift;
     return $self->install( @_, target => TARGET_PREPARE );
 }
-
-=head2 $bool = $mod->create( )
-
-Convenience method around C<install()> that creates a module. 
-This is equivalent to invoking C<install> with C<target> set to 
-C<create>
-
-Returns true on success, false on failure.
-
-=cut
 
 sub create { 
     my $self = shift;
     return $self->install( @_, target => TARGET_CREATE );
 }
 
-=head2 $bool = $mod->test( )
-
-Convenience wrapper around C<install()> that tests a module, without
-installing it.
-It's the equivalent to invoking C<install()> with C<target> set to
-C<create> and C<skiptest> set to C<0>.
-
-Returns true on success, false on failure.
-
-=cut
-
 sub test {
     my $self = shift;
     return $self->install( @_, target => TARGET_CREATE, skiptest => 0 );
 }
-
-=pod
-
-=head2 $bool = $self->install([ target => 'prepare|create|install', format => FORMAT_TYPE, extractdir => DIRECTORY, fetchdir => DIRECTORY, prefer_bin => BOOL, force => BOOL, verbose => BOOL, ..... ]);
-
-Installs the current module. This includes fetching it and extracting
-it, if this hasn't been done yet, as well as creating a distribution
-object for it.
-
-This means you can pass it more arguments than described above, which
-will be passed on to the relevant methods as they are called.
-
-See C<CPANPLUS::Internals::Fetch>, C<CPANPLUS::Internals::Extract> and
-C<CPANPLUS::Dist> for details.
-
-Returns true on success, false on failure.
-
-=cut
 
 sub install {
     my $self = shift;
@@ -1075,17 +694,6 @@ sub install {
     return;
 }
 
-=pod @list = $self->bundle_modules()
-
-Returns a list of module objects the Bundle specifies.
-
-This requires you to have extracted the bundle already, using the
-C<extract()> method.
-
-Returns false on error.
-
-=cut
-
 sub bundle_modules {
     my $self = shift;
     my $cb   = $self->parent;
@@ -1167,16 +775,6 @@ sub bundle_modules {
     return @list;
 }
 
-=pod
-
-=head2 $text = $self->readme
-
-Fetches the readme belonging to this module and stores it under
-C<< $obj->status->readme >>. Returns the readme as a string on
-success and returns false on failure.
-
-=cut
-
 sub readme {
     my $self = shift;
     my $conf = $self->parent->configure_object;    
@@ -1222,28 +820,6 @@ sub readme {
     return $self->status->readme( $in );
 }
 
-=pod
-
-=head2 $version = $self->installed_version()
-
-Returns the currently installed version of this module, if any.
-
-=head2 $where = $self->installed_file()
-
-Returns the location of the currently installed file of this module,
-if any.
-
-=head2 $dir = $self->installed_dir()
-
-Returns the directory (or more accurately, the C<@INC> handle) from
-which this module was loaded, if any.
-
-=head2 $bool = $self->is_uptodate([version => VERSION_NUMBER])
-
-Returns a boolean indicating if this module is uptodate or not.
-
-=cut
-
 ### uptodate/installed functions
 {   my $map = {             # hashkey,      alternate rv
         installed_version   => ['version',  0 ],
@@ -1284,28 +860,6 @@ Returns a boolean indicating if this module is uptodate or not.
 
 
 
-=pod
-
-=head2 $href = $self->details()
-
-Returns a hashref with key/value pairs offering more information about
-a particular module. For example, for C<Time::HiRes> it might look like
-this:
-
-    Author                  Jarkko Hietaniemi (jhi@iki.fi)
-    Description             High resolution time, sleep, and alarm
-    Development Stage       Released
-    Installed File          /usr/local/perl/lib/Time/Hires.pm
-    Interface Style         plain Functions, no references used
-    Language Used           C and perl, a C compiler will be needed
-    Package                 Time-HiRes-1.65.tar.gz
-    Public License          Unknown
-    Support Level           Developer
-    Version Installed       1.52
-    Version on CPAN         1.65
-
-=cut
-
 sub details {
     my $self = shift;
     my $conf = $self->parent->configure_object();
@@ -1336,19 +890,6 @@ sub details {
     return $res;
 }
 
-=head2 @list = $self->contains()
-
-Returns a list of module objects that represent the modules also 
-present in the package of this module.
-
-For example, for C<Archive::Tar> this might return:
-
-    Archive::Tar
-    Archive::Tar::Constant
-    Archive::Tar::File
-
-=cut
-
 sub contains {
     my $self = shift;
     my $cb   = $self->parent;
@@ -1359,43 +900,12 @@ sub contains {
     return @mods;
 }
 
-=pod
-
-=head2 @list_of_hrefs = $self->fetch_report()
-
-This function queries the CPAN testers database at
-I<http://testers.cpan.org/> for test results of specified module
-objects, module names or distributions.
-
-Look at L<CPANPLUS::Internals::Report::_query_report()> for details on
-the options you can pass and the return value to expect.
-
-=cut
-
 sub fetch_report {
     my $self    = shift;
     my $cb      = $self->parent;
 
     return $cb->_query_report( @_, module => $self );
 }
-
-=pod
-
-=head2 $bool = $self->uninstall([type => [all|man|prog])
-
-This function uninstalls the specified module object.
-
-You can install 2 types of files, either C<man> pages or C<prog>ram
-files. Alternately you can specify C<all> to uninstall both (which
-is the default).
-
-Returns true on success and false on failure.
-
-Do note that this does an uninstall via the so-called C<.packlist>,
-so if you used a module installer like say, C<ports> or C<apt>, you
-should not use this, but use your package manager instead.
-
-=cut
 
 sub uninstall {
     my $self = shift;
@@ -1500,15 +1010,6 @@ sub uninstall {
     return !$flag;
 }
 
-=pod
-
-=head2 @modobj = $self->distributions()
-
-Returns a list of module objects representing all releases for this
-module on success, false on failure.
-
-=cut
-
 sub distributions {
     my $self = shift;
     my %hash = @_;
@@ -1518,27 +1019,6 @@ sub distributions {
     ### it's another release then by the same author ###
     return grep { $_->package_name eq $self->package_name } @list;
 }
-
-=pod
-
-=head2 @list = $self->files ()
-
-Returns a list of files used by this module, if it is installed.
-
-=head2 @list = $self->directory_tree ()
-
-Returns a list of directories used by this module.
-
-=head2 @list = $self->packlist ()
-
-Returns the C<ExtUtils::Packlist> object for this module.
-
-=head2 @list = $self->validate ()
-
-Returns a list of files that are missing for this modules, but
-are present in the .packlist file.
-
-=cut
 
 for my $sub (qw[files directory_tree packlist validate]) {
     no strict 'refs';
@@ -1674,18 +1154,6 @@ sub _extutils_installed {
     }
 }
 
-=head2 $bool = $self->add_to_includepath;
-
-Adds the current modules path to C<@INC> and C<$PERL5LIB>. This allows
-you to add the module from its build dir to your path.
-
-You can reset C<@INC> and C<$PERL5LIB> to its original state when you
-started the program, by calling:
-
-    $self->parent->flush('lib');
-    
-=cut
-
 sub add_to_includepath {
     my $self = shift;
     my $cb   = $self->parent;
@@ -1709,23 +1177,6 @@ sub add_to_includepath {
     return 1;
 
 }
-
-=pod
-
-=head2 $path = $self->best_path_to_module_build();
-
-B<OBSOLETE>
-
-If a newer version of Module::Build is found in your path, it will
-return this C<special> path. If the newest version of C<Module::Build>
-is found in your regular C<@INC>, the method will return false. This
-indicates you do not need to add a special directory to your C<@INC>.
-
-Note that this is only relevant if you're building your own
-C<CPANPLUS::Dist::*> plugin -- the built-in dist types already have
-this taken care of.
-
-=cut
 
 ### make sure we're always running 'perl Build.PL' and friends
 ### against the highest version of module::build available
@@ -1774,26 +1225,6 @@ sub best_path_to_module_build {
     ### scanning @INC.
     return;
 }
-
-=pod
-
-=head1 BUG REPORTS
-
-Please report bugs or other issues to E<lt>bug-cpanplus@rt.cpan.org<gt>.
-
-=head1 AUTHOR
-
-This module by Jos Boumans E<lt>kane@cpan.orgE<gt>.
-
-=head1 COPYRIGHT
-
-The CPAN++ interface (of which this module is a part of) is copyright (c) 
-2001 - 2007, Jos Boumans E<lt>kane@cpan.orgE<gt>. All rights reserved.
-
-This library is free software; you may redistribute and/or modify it 
-under the same terms as Perl itself.
-
-=cut
 
 # Local variables:
 # c-indentation-style: bsd

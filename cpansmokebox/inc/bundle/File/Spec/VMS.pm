@@ -12,28 +12,6 @@ $VERSION = eval $VERSION;
 use File::Basename;
 use VMS::Filespec;
 
-=head1 NAME
-
-File::Spec::VMS - methods for VMS file specs
-
-=head1 SYNOPSIS
-
- require File::Spec::VMS; # Done internally by File::Spec if needed
-
-=head1 DESCRIPTION
-
-See File::Spec::Unix for a documentation of the methods provided
-there. This package overrides the implementation of these methods, not
-the semantics.
-
-=over 4
-
-=item canonpath (override)
-
-Removes redundant portions of file specifications according to VMS syntax.
-
-=cut
-
 sub canonpath {
     my($self,$path) = @_;
 
@@ -79,14 +57,6 @@ sub canonpath {
     }
 }
 
-=item catdir (override)
-
-Concatenates a list of file specifications, and returns the result as a
-VMS-syntax directory specification.  No check is made for "impossible"
-cases (e.g. elements other than the first being absolute filespecs).
-
-=cut
-
 sub catdir {
     my $self = shift;
     my $dir = pop;
@@ -114,13 +84,6 @@ sub catdir {
     return $self->canonpath($rslt);
 }
 
-=item catfile (override)
-
-Concatenates a list of file specifications, and returns the result as a
-VMS-syntax file specification.
-
-=cut
-
 sub catfile {
     my $self = shift;
     my $file = $self->canonpath(pop());
@@ -144,48 +107,17 @@ sub catfile {
 }
 
 
-=item curdir (override)
-
-Returns a string representation of the current directory: '[]'
-
-=cut
-
 sub curdir {
     return '[]';
 }
-
-=item devnull (override)
-
-Returns a string representation of the null device: '_NLA0:'
-
-=cut
 
 sub devnull {
     return "_NLA0:";
 }
 
-=item rootdir (override)
-
-Returns a string representation of the root directory: 'SYS$DISK:[000000]'
-
-=cut
-
 sub rootdir {
     return 'SYS$DISK:[000000]';
 }
-
-=item tmpdir (override)
-
-Returns a string representation of the first writable directory
-from the following list or '' if none are writable:
-
-    sys$scratch:
-    $ENV{TMPDIR}
-
-Since perl 5.8.0, if running under taint mode, and if $ENV{TMPDIR}
-is tainted, it is not used.
-
-=cut
 
 my $tmpdir;
 sub tmpdir {
@@ -193,44 +125,19 @@ sub tmpdir {
     $tmpdir = $_[0]->_tmpdir( 'sys$scratch:', $ENV{TMPDIR} );
 }
 
-=item updir (override)
-
-Returns a string representation of the parent directory: '[-]'
-
-=cut
-
 sub updir {
     return '[-]';
 }
 
-=item case_tolerant (override)
-
-VMS file specification syntax is case-tolerant.
-
-=cut
-
 sub case_tolerant {
     return 1;
 }
-
-=item path (override)
-
-Translate logical name DCL$PATH as a searchlist, rather than trying
-to C<split> string value of C<$ENV{'PATH'}>.
-
-=cut
 
 sub path {
     my (@dirs,$dir,$i);
     while ($dir = $ENV{'DCL$PATH;' . $i++}) { push(@dirs,$dir); }
     return @dirs;
 }
-
-=item file_name_is_absolute (override)
-
-Checks for VMS directory spec as well as Unix separators.
-
-=cut
 
 sub file_name_is_absolute {
     my ($self,$file) = @_;
@@ -240,18 +147,6 @@ sub file_name_is_absolute {
 		  $file =~ m![<\[][^.\-\]>]!  ||
 		  $file =~ /:[^<\[]/);
 }
-
-=item splitpath (override)
-
-    ($volume,$directories,$file) = File::Spec->splitpath( $path );
-    ($volume,$directories,$file) = File::Spec->splitpath( $path, $no_file );
-
-Passing a true value for C<$no_file> indicates that the path being
-split only contains directory components, even on systems where you
-can usually (when not supporting a foreign syntax) tell the difference
-between directories and files at a glance.
-
-=cut
 
 sub splitpath {
     my($self,$path, $nofile) = @_;
@@ -272,12 +167,6 @@ sub splitpath {
         return ($1 || '',$2 || '',$3);
     }
 }
-
-=item splitdir (override)
-
-Split dirspec using VMS syntax.
-
-=cut
 
 sub splitdir {
     my($self,$dirspec) = @_;
@@ -304,12 +193,6 @@ sub splitdir {
 }
 
 
-=item catpath (override)
-
-Construct a complete filespec using VMS syntax
-
-=cut
-
 sub catpath {
     my($self,$dev,$dir,$file) = @_;
     
@@ -326,12 +209,6 @@ sub catpath {
     }
     "$dev$dir$file";
 }
-
-=item abs2rel (override)
-
-Use VMS syntax when converting filespecs.
-
-=cut
 
 sub abs2rel {
     my $self = shift;
@@ -387,12 +264,6 @@ sub abs2rel {
     return $self->canonpath( $self->catpath( '', $path_directories, $path_file ) ) ;
 }
 
-
-=item rel2abs (override)
-
-Use VMS syntax when converting filespecs.
-
-=cut
 
 sub rel2abs {
     my $self = shift ;
@@ -532,24 +403,5 @@ sub fixpath {
     $fixedpath;
 }
 
-
-=back
-
-=head1 COPYRIGHT
-
-Copyright (c) 2004 by the Perl 5 Porters.  All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
-
-=head1 SEE ALSO
-
-See L<File::Spec> and L<File::Spec::Unix>.  This package overrides the
-implementation of these methods, not the semantics.
-
-An explanation of VMS file specs can be found at
-L<"http://h71000.www7.hp.com/doc/731FINAL/4506/4506pro_014.html#apps_locating_naming_files">.
-
-=cut
 
 1;

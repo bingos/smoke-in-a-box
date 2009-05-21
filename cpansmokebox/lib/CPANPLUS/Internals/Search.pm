@@ -15,69 +15,6 @@ use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
 $Params::Check::VERBOSE = 1;
 
-=pod
-
-=head1 NAME
-
-CPANPLUS::Internals::Search
-
-=head1 SYNOPSIS
-
-    my $aref = $cpan->_search_module_tree(
-                        type    => 'package',
-                        allow   => [qr/DBI/],
-                    );
-
-    my $aref = $cpan->_search_author_tree(
-                        type    => 'cpanid',
-                        data    => \@old_results,
-                        verbose => 1,
-                        allow   => [qw|KANE AUTRIJUS|],
-                    );
-
-    my $aref = $cpan->_all_installed( );
-
-=head1 DESCRIPTION
-
-The functions in this module are designed to find module(objects)
-based on certain criteria and return them.
-
-=head1 METHODS
-
-=head2 _search_module_tree( type => TYPE, allow => \@regexes, [data => \@previous_results ] )
-
-Searches the moduletree for module objects matching the criteria you
-specify. Returns an array ref of module objects on success, and false
-on failure.
-
-It takes the following arguments:
-
-=over 4
-
-=item type
-
-This can be any of the accessors for the C<CPANPLUS::Module> objects.
-This is a required argument.
-
-=item allow
-
-A set of rules, or more precisely, a list of regexes (via C<qr//> or
-plain strings), that the C<type> must adhere too. You can specify as
-many as you like, and it will be treated as an C<OR> search.
-For an C<AND> search, see the C<data> argument.
-
-This is a required argument.
-
-=item data
-
-An arrayref of previous search results. This is the way to do an C<AND>
-search -- C<_search_module_tree> will only search the module objects
-specified in C<data> if provided, rather than the moduletree itself.
-
-=back
-
-=cut
-
 # Although the Params::Check solution is more graceful, it is WAY too slow.
 #
 # This sample script:
@@ -186,43 +123,6 @@ sub _search_module_tree {
     }
 }
 
-=pod
-
-=head2 _search_author_tree( type => TYPE, allow => \@regexex, [data => \@previous_results ] )
-
-Searches the authortree for author objects matching the criteria you
-specify. Returns an array ref of author objects on success, and false
-on failure.
-
-It takes the following arguments:
-
-=over 4
-
-=item type
-
-This can be any of the accessors for the C<CPANPLUS::Module::Author>
-objects. This is a required argument.
-
-=item allow
-
-
-A set of rules, or more precisely, a list of regexes (via C<qr//> or
-plain strings), that the C<type> must adhere too. You can specify as
-many as you like, and it will be treated as an C<OR> search.
-For an C<AND> search, see the C<data> argument.
-
-This is a required argument.
-
-=item data
-
-An arrayref of previous search results. This is the way to do an C<and>
-search -- C<_search_author_tree> will only search the author objects
-specified in C<data> if provided, rather than the authortree itself.
-
-=back
-
-=cut
-
 sub _search_author_tree {
     my $self = shift;
     my $conf = $self->configure_object;
@@ -262,15 +162,6 @@ sub _search_author_tree {
         return \@rv;
     }
 }
-
-=pod
-
-=head2 _all_installed()
-
-This function returns an array ref of module objects of modules that
-are installed on this system.
-
-=cut
 
 sub _all_installed {
     my $self = shift;

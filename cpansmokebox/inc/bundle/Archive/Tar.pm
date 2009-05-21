@@ -50,51 +50,6 @@ BEGIN {
     } || 0;
 }
 
-=head1 NAME
-
-Archive::Tar - module for manipulations of tar archives
-
-=head1 SYNOPSIS
-
-    use Archive::Tar;
-    my $tar = Archive::Tar->new;
-
-    $tar->read('origin.tgz');
-    $tar->extract();
-
-    $tar->add_files('file/foo.pl', 'docs/README');
-    $tar->add_data('file/baz.txt', 'This is the contents now');
-
-    $tar->rename('oldname', 'new/file/name');
-
-    $tar->write('files.tar');                   # plain tar
-    $tar->write('files.tgz', COMPRESS_GZIP);    # gzip compressed
-    $tar->write('files.tbz', COMPRESS_BZIP);    # bzip2 compressed
-
-=head1 DESCRIPTION
-
-Archive::Tar provides an object oriented mechanism for handling tar
-files.  It provides class methods for quick and easy files handling
-while also allowing for the creation of tar file objects for custom
-manipulation.  If you have the IO::Zlib module installed,
-Archive::Tar will also support compressed or gzipped tar files.
-
-An object of class Archive::Tar represents a .tar(.gz) archive full
-of files and things.
-
-=head1 Object Methods
-
-=head2 Archive::Tar->new( [$file, $compressed] )
-
-Returns a new Tar object. If given any arguments, C<new()> calls the
-C<read()> method automatically, passing on the arguments provided to
-the C<read()> method.
-
-If C<new()> is invoked with arguments and the C<read()> method fails
-for any reason, C<new()> returns undef.
-
-=cut
-
 my $tmpl = {
     _data   => [ ],
     _file   => 'Unknown',
@@ -127,62 +82,6 @@ sub new {
 
     return $obj;
 }
-
-=head2 $tar->read ( $filename|$handle, [$compressed, {opt => 'val'}] )
-
-Read the given tar file into memory.
-The first argument can either be the name of a file or a reference to
-an already open filehandle (or an IO::Zlib object if it's compressed)
-
-The C<read> will I<replace> any previous content in C<$tar>!
-
-The second argument may be considered optional, but remains for
-backwards compatibility. Archive::Tar now looks at the file
-magic to determine what class should be used to open the file
-and will transparently Do The Right Thing.
-
-Archive::Tar will warn if you try to pass a bzip2 compressed file and the
-IO::Zlib / IO::Uncompress::Bunzip2 modules are not available and simply return.
-
-Note that you can currently B<not> pass a C<gzip> compressed
-filehandle, which is not opened with C<IO::Zlib>, a C<bzip2> compressed
-filehandle, which is not opened with C<IO::Uncompress::Bunzip2>, nor a string
-containing the full archive information (either compressed or
-uncompressed). These are worth while features, but not currently
-implemented. See the C<TODO> section.
-
-The third argument can be a hash reference with options. Note that
-all options are case-sensitive.
-
-=over 4
-
-=item limit
-
-Do not read more than C<limit> files. This is useful if you have
-very big archives, and are only interested in the first few files.
-
-=item filter
-
-Can be set to a regular expression.  Only files with names that match
-the expression will be read.
-
-=item extract
-
-If set to true, immediately extract entries when reading them. This
-gives you the same memory break as the C<extract_archive> function.
-Note however that entries will not be read into memory, but written
-straight to disk. This means no C<Archive::Tar::File> objects are
-created for you to inspect.
-
-=back
-
-All files are stored internally as C<Archive::Tar::File> objects.
-Please consult the L<Archive::Tar::File> documentation for details.
-
-Returns the number of files read in scalar context, and a list of
-C<Archive::Tar::File> objects in list context.
-
-=cut
 
 sub read {
     my $self = shift;
@@ -475,18 +374,6 @@ sub _read_tar {
     return $tarfile;
 }
 
-=head2 $tar->contains_file( $filename )
-
-Check if the archive contains a certain file.
-It will return true if the file is in the archive, false otherwise.
-
-Note however, that this function does an exact match using C<eq>
-on the full path. So it cannot compensate for case-insensitive file-
-systems or compare 2 paths to see if they would point to the same
-underlying file.
-
-=cut
-
 sub contains_file {
     my $self = shift;
     my $full = shift;
@@ -499,24 +386,6 @@ sub contains_file {
     return 1 if $self->_find_entry($full);
     return;
 }
-
-=head2 $tar->extract( [@filenames] )
-
-Write files whose names are equivalent to any of the names in
-C<@filenames> to disk, creating subdirectories as necessary. This
-might not work too well under VMS.
-Under MacPerl, the file's modification time will be converted to the
-MacOS zero of time, and appropriate conversions will be done to the
-path.  However, the length of each element of the path is not
-inspected to see whether it's longer than MacOS currently allows (32
-characters).
-
-If C<extract> is called without a list of file names, the entire
-contents of the archive are extracted.
-
-Returns a list of filenames extracted.
-
-=cut
 
 sub extract {
     my $self    = shift;
@@ -575,22 +444,6 @@ sub extract {
 
     return @files;
 }
-
-=head2 $tar->extract_file( $file, [$extract_path] )
-
-Write an entry, whose name is equivalent to the file name provided to
-disk. Optionally takes a second parameter, which is the full native
-path (including filename) the entry will be written to.
-
-For example:
-
-    $tar->extract_file( 'name/in/archive', 'name/i/want/to/give/it' );
-
-    $tar->extract_file( $at_file_object,   'name/i/want/to/give/it' );
-
-Returns true on success, false on failure.
-
-=cut
 
 sub extract_file {
     my $self = shift;
@@ -895,23 +748,6 @@ sub _extract_special_file_as_plain_file {
     return $self->_error($err);
 }
 
-=head2 $tar->list_files( [\@properties] )
-
-Returns a list of the names of all the files in the archive.
-
-If C<list_files()> is passed an array reference as its first argument
-it returns a list of hash references containing the requested
-properties of each file.  The following list of properties is
-supported: name, size, mtime (last modified date), mode, uid, gid,
-linkname, uname, gname, devmajor, devminor, prefix.
-
-Passing an array reference containing only one element, 'name', is
-special cased to return a list of names rather than a list of hash
-references, making it equivalent to calling C<list_files> without
-arguments.
-
-=cut
-
 sub list_files {
     my $self = shift;
     my $aref = shift || [ ];
@@ -959,17 +795,6 @@ sub _find_entry {
     return;
 }
 
-=head2 $tar->get_files( [@filenames] )
-
-Returns the C<Archive::Tar::File> objects matching the filenames
-provided. If no filename list was passed, all C<Archive::Tar::File>
-objects in the current Tar object are returned.
-
-Please refer to the C<Archive::Tar::File> documentation on how to
-handle these objects.
-
-=cut
-
 sub get_files {
     my $self = shift;
 
@@ -983,12 +808,6 @@ sub get_files {
     return @list;
 }
 
-=head2 $tar->get_content( $file )
-
-Return the content of the named file.
-
-=cut
-
 sub get_content {
     my $self = shift;
     my $entry = $self->_find_entry( shift ) or return;
@@ -996,29 +815,12 @@ sub get_content {
     return $entry->data;
 }
 
-=head2 $tar->replace_content( $file, $content )
-
-Make the string $content be the content for the file named $file.
-
-=cut
-
 sub replace_content {
     my $self = shift;
     my $entry = $self->_find_entry( shift ) or return;
 
     return $entry->replace_content( shift );
 }
-
-=head2 $tar->rename( $file, $new_name )
-
-Rename the file of the in-memory archive to $new_name.
-
-Note that you must specify a Unix path for $new_name, since per tar
-standard, all files in the archive must be Unix paths.
-
-Returns true on success and false on failure.
-
-=cut
 
 sub rename {
     my $self = shift;
@@ -1029,14 +831,6 @@ sub rename {
 
     return $entry->rename( $new );
 }
-
-=head2 $tar->remove (@filenamelist)
-
-Removes any entries with names matching any of the given filenames
-from the in-memory archive. Returns a list of C<Archive::Tar::File>
-objects that remain.
-
-=cut
 
 sub remove {
     my $self = shift;
@@ -1050,14 +844,6 @@ sub remove {
     return values %seen;
 }
 
-=head2 $tar->clear
-
-C<clear> clears the current in-memory archive. This effectively gives
-you a 'blank' object, ready to be filled again. Note that C<clear>
-only has effect on the object, not the underlying tarfile.
-
-=cut
-
 sub clear {
     my $self = shift or return;
 
@@ -1067,40 +853,6 @@ sub clear {
     return 1;
 }
 
-
-=head2 $tar->write ( [$file, $compressed, $prefix] )
-
-Write the in-memory archive to disk.  The first argument can either
-be the name of a file or a reference to an already open filehandle (a
-GLOB reference).
-
-The second argument is used to indicate compression. You can either
-compress using C<gzip> or C<bzip2>. If you pass a digit, it's assumed
-to be the C<gzip> compression level (between 1 and 9), but the use of
-constants is prefered:
-
-  # write a gzip compressed file
-  $tar->write( 'out.tgz', COMPRESS_GZIP );
-
-  # write a bzip compressed file
-  $tar->write( 'out.tbz', COMPRESS_BZIP );
-
-Note that when you pass in a filehandle, the compression argument
-is ignored, as all files are printed verbatim to your filehandle.
-If you wish to enable compression with filehandles, use an
-C<IO::Zlib> or C<IO::Compress::Bzip2> filehandle instead.
-
-The third argument is an optional prefix. All files will be tucked
-away in the directory you specify as prefix. So if you have files
-'a' and 'b' in your archive, and you specify 'foo' as prefix, they
-will be written to the archive as 'foo/a' and 'foo/b'.
-
-If no arguments are given, C<write> returns the entire formatted
-archive as a string, which could be useful if you'd like to stuff the
-archive into a socket or a pipe to gzip or something.
-
-
-=cut
 
 sub write {
     my $self        = shift;
@@ -1296,28 +1048,6 @@ sub _format_tar_entry {
     return $tar;
 }
 
-=head2 $tar->add_files( @filenamelist )
-
-Takes a list of filenames and adds them to the in-memory archive.
-
-The path to the file is automatically converted to a Unix like
-equivalent for use in the archive, and, if on MacOS, the file's
-modification time is converted from the MacOS epoch to the Unix epoch.
-So tar archives created on MacOS with B<Archive::Tar> can be read
-both with I<tar> on Unix and applications like I<suntar> or
-I<Stuffit Expander> on MacOS.
-
-Be aware that the file's type/creator and resource fork will be lost,
-which is usually what you want in cross-platform archives.
-
-Instead of a filename, you can also pass it an existing C<Archive::Tar::File>
-object from, for example, another archive. The object will be clone, and
-effectively be a copy of the original, not an alias.
-
-Returns a list of C<Archive::Tar::File> objects that were just added.
-
-=cut
-
 sub add_files {
     my $self    = shift;
     my @files   = @_ or return;
@@ -1352,59 +1082,6 @@ sub add_files {
     return @rv;
 }
 
-=head2 $tar->add_data ( $filename, $data, [$opthashref] )
-
-Takes a filename, a scalar full of data and optionally a reference to
-a hash with specific options.
-
-Will add a file to the in-memory archive, with name C<$filename> and
-content C<$data>. Specific properties can be set using C<$opthashref>.
-The following list of properties is supported: name, size, mtime
-(last modified date), mode, uid, gid, linkname, uname, gname,
-devmajor, devminor, prefix, type.  (On MacOS, the file's path and
-modification times are converted to Unix equivalents.)
-
-Valid values for the file type are the following constants defined in
-Archive::Tar::Constants:
-
-=over 4
-
-=item FILE
-
-Regular file.
-
-=item HARDLINK
-
-=item SYMLINK
-
-Hard and symbolic ("soft") links; linkname should specify target.
-
-=item CHARDEV
-
-=item BLOCKDEV
-
-Character and block devices. devmajor and devminor should specify the major
-and minor device numbers.
-
-=item DIR
-
-Directory.
-
-=item FIFO
-
-FIFO (named pipe).
-
-=item SOCKET
-
-Socket.
-
-=back
-
-Returns the C<Archive::Tar::File> object that was just added, or
-C<undef> on failure.
-
-=cut
-
 sub add_data {
     my $self    = shift;
     my ($file, $data, $opt) = @_;
@@ -1419,18 +1096,6 @@ sub add_data {
 
     return $obj;
 }
-
-=head2 $tar->error( [$BOOL] )
-
-Returns the current errorstring (usually, the last error reported).
-If a true value was specified, it will give the C<Carp::longmess>
-equivalent of the error, in effect giving you a stacktrace.
-
-For backwards compatibility, this error is also available as
-C<$Archive::Tar::error> although it is much recommended you use the
-method call instead.
-
-=cut
 
 {
     $error = '';
@@ -1456,83 +1121,12 @@ method call instead.
     }
 }
 
-=head2 $tar->setcwd( $cwd );
-
-C<Archive::Tar> needs to know the current directory, and it will run
-C<Cwd::cwd()> I<every> time it extracts a I<relative> entry from the
-tarfile and saves it in the file system. (As of version 1.30, however,
-C<Archive::Tar> will use the speed optimization described below
-automatically, so it's only relevant if you're using C<extract_file()>).
-
-Since C<Archive::Tar> doesn't change the current directory internally
-while it is extracting the items in a tarball, all calls to C<Cwd::cwd()>
-can be avoided if we can guarantee that the current directory doesn't
-get changed externally.
-
-To use this performance boost, set the current directory via
-
-    use Cwd;
-    $tar->setcwd( cwd() );
-
-once before calling a function like C<extract_file> and
-C<Archive::Tar> will use the current directory setting from then on
-and won't call C<Cwd::cwd()> internally.
-
-To switch back to the default behaviour, use
-
-    $tar->setcwd( undef );
-
-and C<Archive::Tar> will call C<Cwd::cwd()> internally again.
-
-If you're using C<Archive::Tar>'s C<exract()> method, C<setcwd()> will
-be called for you.
-
-=cut
-
 sub setcwd {
     my $self     = shift;
     my $cwd      = shift;
 
     $self->{cwd} = $cwd;
 }
-
-=head1 Class Methods
-
-=head2 Archive::Tar->create_archive($file, $compressed, @filelist)
-
-Creates a tar file from the list of files provided.  The first
-argument can either be the name of the tar file to create or a
-reference to an open file handle (e.g. a GLOB reference).
-
-The second argument is used to indicate compression. You can either
-compress using C<gzip> or C<bzip2>. If you pass a digit, it's assumed
-to be the C<gzip> compression level (between 1 and 9), but the use of
-constants is prefered:
-
-  # write a gzip compressed file
-  Archive::Tar->create_archive( 'out.tgz', COMPRESS_GZIP, @filelist );
-
-  # write a bzip compressed file
-  Archive::Tar->create_archive( 'out.tbz', COMPRESS_BZIP, @filelist );
-
-Note that when you pass in a filehandle, the compression argument
-is ignored, as all files are printed verbatim to your filehandle.
-If you wish to enable compression with filehandles, use an
-C<IO::Zlib> or C<IO::Compress::Bzip2> filehandle instead.
-
-The remaining arguments list the files to be included in the tar file.
-These files must all exist. Any files which don't exist or can't be
-read are silently ignored.
-
-If the archive creation fails for any reason, C<create_archive> will
-return false. Please use the C<error> method to find the cause of the
-failure.
-
-Note that this method does not write C<on the fly> as it were; it
-still reads all the files into memory before writing out the archive.
-Consult the FAQ below if this is a problem.
-
-=cut
 
 sub create_archive {
     my $class = shift;
@@ -1549,31 +1143,6 @@ sub create_archive {
     $tar->add_files( @files );
     return $tar->write( $file, $gzip );
 }
-
-=head2 Archive::Tar->iter( $filename, [ $compressed, {opt => $val} ] )
-
-Returns an iterator function that reads the tar file without loading
-it all in memory.  Each time the function is called it will return the
-next file in the tarball. The files are returned as
-C<Archive::Tar::File> objects. The iterator function returns the
-empty list once it has exhausted the the files contained.
-
-The second argument can be a hash reference with options, which are
-identical to the arguments passed to C<read()>.
-
-Example usage:
-
-    my $next = Archive::Tar->iter( "example.tar.gz", 1, {filter => qr/\.pm$/} );
-
-    while( my $f = $next->() ) {
-        print $f->name, "\n";
-
-        $f->extract or warn "Extraction failed";
-
-        # ....
-    }
-
-=cut
 
 
 sub iter {
@@ -1606,26 +1175,6 @@ sub iter {
     };
 }
 
-=head2 Archive::Tar->list_archive($file, $compressed, [\@properties])
-
-Returns a list of the names of all the files in the archive.  The
-first argument can either be the name of the tar file to list or a
-reference to an open file handle (e.g. a GLOB reference).
-
-If C<list_archive()> is passed an array reference as its third
-argument it returns a list of hash references containing the requested
-properties of each file.  The following list of properties is
-supported: full_path, name, size, mtime (last modified date), mode,
-uid, gid, linkname, uname, gname, devmajor, devminor, prefix.
-
-See C<Archive::Tar::File> for details about supported properties.
-
-Passing an array reference containing only one element, 'name', is
-special cased to return a list of names rather than a list of hash
-references.
-
-=cut
-
 sub list_archive {
     my $class   = shift;
     my $file    = shift; return unless defined $file;
@@ -1637,20 +1186,6 @@ sub list_archive {
     return $tar->list_files( @_ );
 }
 
-=head2 Archive::Tar->extract_archive($file, $compressed)
-
-Extracts the contents of the tar file.  The first argument can either
-be the name of the tar file to create or a reference to an open file
-handle (e.g. a GLOB reference).  All relative paths in the tar file will
-be created underneath the current working directory.
-
-C<extract_archive> will return a list of files it extracted.
-If the archive extraction fails for any reason, C<extract_archive>
-will return false.  Please use the C<error> method to find the cause
-of the failure.
-
-=cut
-
 sub extract_archive {
     my $class   = shift;
     my $file    = shift; return unless defined $file;
@@ -1661,63 +1196,13 @@ sub extract_archive {
     return $tar->read( $file, $gzip, { extract => 1 } );
 }
 
-=head2 $bool = Archive::Tar->has_io_string
-
-Returns true if we currently have C<IO::String> support loaded.
-
-Either C<IO::String> or C<perlio> support is needed to support writing
-stringified archives. Currently, C<perlio> is the preferred method, if
-available.
-
-See the C<GLOBAL VARIABLES> section to see how to change this preference.
-
-=cut
-
 sub has_io_string { return $HAS_IO_STRING; }
-
-=head2 $bool = Archive::Tar->has_perlio
-
-Returns true if we currently have C<perlio> support loaded.
-
-This requires C<perl-5.8> or higher, compiled with C<perlio>
-
-Either C<IO::String> or C<perlio> support is needed to support writing
-stringified archives. Currently, C<perlio> is the preferred method, if
-available.
-
-See the C<GLOBAL VARIABLES> section to see how to change this preference.
-
-=cut
 
 sub has_perlio { return $HAS_PERLIO; }
 
-=head2 $bool = Archive::Tar->has_zlib_support
-
-Returns true if C<Archive::Tar> can extract C<zlib> compressed archives
-
-=cut
-
 sub has_zlib_support { return ZLIB }
 
-=head2 $bool = Archive::Tar->has_bzip2_support
-
-Returns true if C<Archive::Tar> can extract C<bzip2> compressed archives
-
-=cut
-
 sub has_bzip2_support { return BZIP }
-
-=head2 Archive::Tar->can_handle_compressed_files
-
-A simple checking routine, which will return true if C<Archive::Tar>
-is able to uncompress compressed archives on the fly with C<IO::Zlib>
-and C<IO::Compress::Bzip2> or false if not both are installed.
-
-You can use this as a shortcut to determine whether C<Archive::Tar>
-will do what you think before passing compressed archives to its
-C<read> method.
-
-=cut
 
 sub can_handle_compressed_files { return ZLIB && BZIP ? 1 : 0 }
 
@@ -1729,366 +1214,3 @@ sub no_string_support {
 
 __END__
 
-=head1 GLOBAL VARIABLES
-
-=head2 $Archive::Tar::FOLLOW_SYMLINK
-
-Set this variable to C<1> to make C<Archive::Tar> effectively make a
-copy of the file when extracting. Default is C<0>, which
-means the symlink stays intact. Of course, you will have to pack the
-file linked to as well.
-
-This option is checked when you write out the tarfile using C<write>
-or C<create_archive>.
-
-This works just like C</bin/tar>'s C<-h> option.
-
-=head2 $Archive::Tar::CHOWN
-
-By default, C<Archive::Tar> will try to C<chown> your files if it is
-able to. In some cases, this may not be desired. In that case, set
-this variable to C<0> to disable C<chown>-ing, even if it were
-possible.
-
-The default is C<1>.
-
-=head2 $Archive::Tar::CHMOD
-
-By default, C<Archive::Tar> will try to C<chmod> your files to
-whatever mode was specified for the particular file in the archive.
-In some cases, this may not be desired. In that case, set this
-variable to C<0> to disable C<chmod>-ing.
-
-The default is C<1>.
-
-=head2 $Archive::Tar::DO_NOT_USE_PREFIX
-
-By default, C<Archive::Tar> will try to put paths that are over
-100 characters in the C<prefix> field of your tar header, as
-defined per POSIX-standard. However, some (older) tar programs
-do not implement this spec. To retain compatibility with these older
-or non-POSIX compliant versions, you can set the C<$DO_NOT_USE_PREFIX>
-variable to a true value, and C<Archive::Tar> will use an alternate
-way of dealing with paths over 100 characters by using the
-C<GNU Extended Header> feature.
-
-Note that clients who do not support the C<GNU Extended Header>
-feature will not be able to read these archives. Such clients include
-tars on C<Solaris>, C<Irix> and C<AIX>.
-
-The default is C<0>.
-
-=head2 $Archive::Tar::DEBUG
-
-Set this variable to C<1> to always get the C<Carp::longmess> output
-of the warnings, instead of the regular C<carp>. This is the same
-message you would get by doing:
-
-    $tar->error(1);
-
-Defaults to C<0>.
-
-=head2 $Archive::Tar::WARN
-
-Set this variable to C<0> if you do not want any warnings printed.
-Personally I recommend against doing this, but people asked for the
-option. Also, be advised that this is of course not threadsafe.
-
-Defaults to C<1>.
-
-=head2 $Archive::Tar::error
-
-Holds the last reported error. Kept for historical reasons, but its
-use is very much discouraged. Use the C<error()> method instead:
-
-    warn $tar->error unless $tar->extract;
-
-=head2 $Archive::Tar::INSECURE_EXTRACT_MODE
-
-This variable indicates whether C<Archive::Tar> should allow
-files to be extracted outside their current working directory.
-
-Allowing this could have security implications, as a malicious
-tar archive could alter or replace any file the extracting user
-has permissions to. Therefor, the default is to not allow
-insecure extractions.
-
-If you trust the archive, or have other reasons to allow the
-archive to write files outside your current working directory,
-set this variable to C<true>.
-
-Note that this is a backwards incompatible change from version
-C<1.36> and before.
-
-=head2 $Archive::Tar::HAS_PERLIO
-
-This variable holds a boolean indicating if we currently have
-C<perlio> support loaded. This will be enabled for any perl
-greater than C<5.8> compiled with C<perlio>.
-
-If you feel strongly about disabling it, set this variable to
-C<false>. Note that you will then need C<IO::String> installed
-to support writing stringified archives.
-
-Don't change this variable unless you B<really> know what you're
-doing.
-
-=head2 $Archive::Tar::HAS_IO_STRING
-
-This variable holds a boolean indicating if we currently have
-C<IO::String> support loaded. This will be enabled for any perl
-that has a loadable C<IO::String> module.
-
-If you feel strongly about disabling it, set this variable to
-C<false>. Note that you will then need C<perlio> support from
-your perl to be able to  write stringified archives.
-
-Don't change this variable unless you B<really> know what you're
-doing.
-
-=head1 FAQ
-
-=over 4
-
-=item What's the minimum perl version required to run Archive::Tar?
-
-You will need perl version 5.005_03 or newer.
-
-=item Isn't Archive::Tar slow?
-
-Yes it is. It's pure perl, so it's a lot slower then your C</bin/tar>
-However, it's very portable. If speed is an issue, consider using
-C</bin/tar> instead.
-
-=item Isn't Archive::Tar heavier on memory than /bin/tar?
-
-Yes it is, see previous answer. Since C<Compress::Zlib> and therefore
-C<IO::Zlib> doesn't support C<seek> on their filehandles, there is little
-choice but to read the archive into memory.
-This is ok if you want to do in-memory manipulation of the archive.
-
-If you just want to extract, use the C<extract_archive> class method
-instead. It will optimize and write to disk immediately.
-
-Another option is to use the C<iter> class method to iterate over
-the files in the tarball without reading them all in memory at once.
-
-=item Can you lazy-load data instead?
-
-In some cases, yes. You can use the C<iter> class method to iterate
-over the files in the tarball without reading them all in memory at once.
-
-=item How much memory will an X kb tar file need?
-
-Probably more than X kb, since it will all be read into memory. If
-this is a problem, and you don't need to do in memory manipulation
-of the archive, consider using the C<iter> class method, or C</bin/tar>
-instead.
-
-=item What do you do with unsupported filetypes in an archive?
-
-C<Unix> has a few filetypes that aren't supported on other platforms,
-like C<Win32>. If we encounter a C<hardlink> or C<symlink> we'll just
-try to make a copy of the original file, rather than throwing an error.
-
-This does require you to read the entire archive in to memory first,
-since otherwise we wouldn't know what data to fill the copy with.
-(This means that you cannot use the class methods, including C<iter>
-on archives that have incompatible filetypes and still expect things
-to work).
-
-For other filetypes, like C<chardevs> and C<blockdevs> we'll warn that
-the extraction of this particular item didn't work.
-
-=item I'm using WinZip, or some other non-POSIX client, and files are not being extracted properly!
-
-By default, C<Archive::Tar> is in a completely POSIX-compatible
-mode, which uses the POSIX-specification of C<tar> to store files.
-For paths greather than 100 characters, this is done using the
-C<POSIX header prefix>. Non-POSIX-compatible clients may not support
-this part of the specification, and may only support the C<GNU Extended
-Header> functionality. To facilitate those clients, you can set the
-C<$Archive::Tar::DO_NOT_USE_PREFIX> variable to C<true>. See the
-C<GLOBAL VARIABLES> section for details on this variable.
-
-Note that GNU tar earlier than version 1.14 does not cope well with
-the C<POSIX header prefix>. If you use such a version, consider setting
-the C<$Archive::Tar::DO_NOT_USE_PREFIX> variable to C<true>.
-
-=item How do I extract only files that have property X from an archive?
-
-Sometimes, you might not wish to extract a complete archive, just
-the files that are relevant to you, based on some criteria.
-
-You can do this by filtering a list of C<Archive::Tar::File> objects
-based on your criteria. For example, to extract only files that have
-the string C<foo> in their title, you would use:
-
-    $tar->extract(
-        grep { $_->full_path =~ /foo/ } $tar->get_files
-    );
-
-This way, you can filter on any attribute of the files in the archive.
-Consult the C<Archive::Tar::File> documentation on how to use these
-objects.
-
-=item How do I access .tar.Z files?
-
-The C<Archive::Tar> module can optionally use C<Compress::Zlib> (via
-the C<IO::Zlib> module) to access tar files that have been compressed
-with C<gzip>. Unfortunately tar files compressed with the Unix C<compress>
-utility cannot be read by C<Compress::Zlib> and so cannot be directly
-accesses by C<Archive::Tar>.
-
-If the C<uncompress> or C<gunzip> programs are available, you can use
-one of these workarounds to read C<.tar.Z> files from C<Archive::Tar>
-
-Firstly with C<uncompress>
-
-    use Archive::Tar;
-
-    open F, "uncompress -c $filename |";
-    my $tar = Archive::Tar->new(*F);
-    ...
-
-and this with C<gunzip>
-
-    use Archive::Tar;
-
-    open F, "gunzip -c $filename |";
-    my $tar = Archive::Tar->new(*F);
-    ...
-
-Similarly, if the C<compress> program is available, you can use this to
-write a C<.tar.Z> file
-
-    use Archive::Tar;
-    use IO::File;
-
-    my $fh = new IO::File "| compress -c >$filename";
-    my $tar = Archive::Tar->new();
-    ...
-    $tar->write($fh);
-    $fh->close ;
-
-=item How do I handle Unicode strings?
-
-C<Archive::Tar> uses byte semantics for any files it reads from or writes
-to disk. This is not a problem if you only deal with files and never
-look at their content or work solely with byte strings. But if you use
-Unicode strings with character semantics, some additional steps need
-to be taken.
-
-For example, if you add a Unicode string like
-
-    # Problem
-    $tar->add_data('file.txt', "Euro: \x{20AC}");
-
-then there will be a problem later when the tarfile gets written out
-to disk via C<$tar->write()>:
-
-    Wide character in print at .../Archive/Tar.pm line 1014.
-
-The data was added as a Unicode string and when writing it out to disk,
-the C<:utf8> line discipline wasn't set by C<Archive::Tar>, so Perl
-tried to convert the string to ISO-8859 and failed. The written file
-now contains garbage.
-
-For this reason, Unicode strings need to be converted to UTF-8-encoded
-bytestrings before they are handed off to C<add_data()>:
-
-    use Encode;
-    my $data = "Accented character: \x{20AC}";
-    $data = encode('utf8', $data);
-
-    $tar->add_data('file.txt', $data);
-
-A opposite problem occurs if you extract a UTF8-encoded file from a
-tarball. Using C<get_content()> on the C<Archive::Tar::File> object
-will return its content as a bytestring, not as a Unicode string.
-
-If you want it to be a Unicode string (because you want character
-semantics with operations like regular expression matching), you need
-to decode the UTF8-encoded content and have Perl convert it into
-a Unicode string:
-
-    use Encode;
-    my $data = $tar->get_content();
-
-    # Make it a Unicode string
-    $data = decode('utf8', $data);
-
-There is no easy way to provide this functionality in C<Archive::Tar>,
-because a tarball can contain many files, and each of which could be
-encoded in a different way.
-
-=back
-
-=head1 TODO
-
-=over 4
-
-=item Check if passed in handles are open for read/write
-
-Currently I don't know of any portable pure perl way to do this.
-Suggestions welcome.
-
-=item Allow archives to be passed in as string
-
-Currently, we only allow opened filehandles or filenames, but
-not strings. The internals would need some reworking to facilitate
-stringified archives.
-
-=item Facilitate processing an opened filehandle of a compressed archive
-
-Currently, we only support this if the filehandle is an IO::Zlib object.
-Environments, like apache, will present you with an opened filehandle
-to an uploaded file, which might be a compressed archive.
-
-=back
-
-=head1 SEE ALSO
-
-=over 4
-
-=item The GNU tar specification
-
-C<http://www.gnu.org/software/tar/manual/tar.html>
-
-=item The PAX format specication
-
-The specifcation which tar derives from; C< http://www.opengroup.org/onlinepubs/007904975/utilities/pax.html>
-
-=item A comparison of GNU and POSIX tar standards; C<http://www.delorie.com/gnu/docs/tar/tar_114.html>
-
-=item GNU tar intends to switch to POSIX compatibility
-
-GNU Tar authors have expressed their intention to become completely
-POSIX-compatible; C<http://www.gnu.org/software/tar/manual/html_node/Formats.html>
-
-=item A Comparison between various tar implementations
-
-Lists known issues and incompatibilities; C<http://gd.tuwien.ac.at/utils/archivers/star/README.otherbugs>
-
-=back
-
-=head1 AUTHOR
-
-This module by Jos Boumans E<lt>kane@cpan.orgE<gt>.
-
-Please reports bugs to E<lt>bug-archive-tar@rt.cpan.orgE<gt>.
-
-=head1 ACKNOWLEDGEMENTS
-
-Thanks to Sean Burke, Chris Nandor, Chip Salzenberg, Tim Heaney, Gisle Aas
-and especially Andrew Savige for their help and suggestions.
-
-=head1 COPYRIGHT
-
-This module is copyright (c) 2002 - 2008 Jos Boumans
-E<lt>kane@cpan.orgE<gt>. All rights reserved.
-
-This library is free software; you may redistribute and/or modify
-it under the same terms as Perl itself.
-
-=cut

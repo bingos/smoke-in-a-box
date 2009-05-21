@@ -4,69 +4,6 @@ use strict;
 
 use Log::Message private => 0;;
 
-=pod
-
-=head1 NAME
-
-CPANPLUS::Error
-
-=head1 SYNOPSIS
-
-    use CPANPLUS::Error qw[cp_msg cp_error];
-
-=head1 DESCRIPTION
-
-This module provides the error handling code for the CPANPLUS
-libraries, and is mainly intended for internal use.
-
-=head1 FUNCTIONS
-
-=head2 cp_msg("message string" [,VERBOSE])
-
-Records a message on the stack, and prints it to C<STDOUT> (or actually
-C<$MSG_FH>, see the C<GLOBAL VARIABLES> section below), if the
-C<VERBOSE> option is true.
-The C<VERBOSE> option defaults to false.
-
-=head2 msg()
-
-An alias for C<cp_msg>.
-
-=head2 cp_error("error string" [,VERBOSE])
-
-Records an error on the stack, and prints it to C<STDERR> (or actually
-C<$ERROR_FH>, see the C<GLOBAL VARIABLES> sections below), if the
-C<VERBOSE> option is true.
-The C<VERBOSE> options defaults to true.
-
-=head2 error()
-
-An alias for C<cp_error>.
-
-=head1 CLASS METHODS
-
-=head2 CPANPLUS::Error->stack()
-
-Retrieves all the items on the stack. Since C<CPANPLUS::Error> is
-implemented using C<Log::Message>, consult its manpage for the
-function C<retrieve> to see what is returned and how to use the items.
-
-=head2 CPANPLUS::Error->stack_as_string([TRACE])
-
-Returns the whole stack as a printable string. If the C<TRACE> option is
-true all items are returned with C<Carp::longmess> output, rather than
-just the message.
-C<TRACE> defaults to false.
-
-=head2 CPANPLUS::Error->flush()
-
-Removes all the items from the stack and returns them. Since
-C<CPANPLUS::Error> is  implemented using C<Log::Message>, consult its
-manpage for the function C<retrieve> to see what is returned and how
-to use the items.
-
-=cut
-
 BEGIN {
     use Exporter;
     use Params::Check   qw[check];
@@ -118,25 +55,6 @@ BEGIN {
                     } __PACKAGE__->stack;
     }
 }
-
-=head1 GLOBAL VARIABLES
-
-=over 4
-
-=item $ERROR_FH
-
-This is the filehandle all the messages sent to C<error()> are being
-printed. This defaults to C<*STDERR>.
-
-=item $MSG_FH
-
-This is the filehandle all the messages sent to C<msg()> are being
-printed. This default to C<*STDOUT>.
-
-=cut
-local $| = 1;
-$ERROR_FH   = \*STDERR;
-$MSG_FH     = \*STDOUT;
 
 package Log::Message::Handlers;
 use Carp ();

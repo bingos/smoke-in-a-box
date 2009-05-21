@@ -44,40 +44,6 @@ use vars qw[@ISA $VERSION];
 
 $VERSION = "0.8601";
 
-=pod
-
-=head1 NAME
-
-CPANPLUS::Internals
-
-=head1 SYNOPSIS
-
-    my $internals   = CPANPLUS::Internals->_init( _conf => $conf );
-    my $backend     = CPANPLUS::Internals->_retrieve_id( $ID );
-
-=head1 DESCRIPTION
-
-This module is the guts of CPANPLUS -- it inherits from all other
-modules in the CPANPLUS::Internals::* namespace, thus defying normal
-rules of OO programming -- but if you're reading this, you already
-know what's going on ;)
-
-Please read the C<CPANPLUS::Backend> documentation for the normal API.
-
-=head1 ACCESSORS
-
-=over 4
-
-=item _conf
-
-Get/set the configure object
-
-=item _id
-
-Get/set the id
-
-=cut
-
 ### autogenerate accessors ###
 for my $key ( qw[_conf _id _modules _hosts _methods _status
                  _callbacks _selfupdate _mtree _atree]
@@ -89,38 +55,6 @@ for my $key ( qw[_conf _id _modules _hosts _methods _status
     }
 }
 
-=pod
-
-=back
-
-=head1 METHODS
-
-=head2 $internals = CPANPLUS::Internals->_init( _conf => CONFIG_OBJ )
-
-C<_init> creates a new CPANPLUS::Internals object.
-
-You have to pass it a valid C<CPANPLUS::Configure> object.
-
-Returns the object on success, or dies on failure.
-
-=cut
-{   ### NOTE:
-    ### if extra callbacks are added, don't forget to update the
-    ### 02-internals.t test script with them!
-    my $callback_map = {
-        ### name                default value    
-        install_prerequisite    => 1,   # install prereqs when 'ask' is set?
-        edit_test_report        => 0,   # edit the prepared test report?
-        send_test_report        => 1,   # send the test report?
-                                        # munge the test report
-        munge_test_report       => sub { return $_[1] },
-                                        # filter out unwanted prereqs
-        filter_prereqs          => sub { return $_[1] },
-                                        # continue if 'make test' fails?
-        proceed_on_test_failure => sub { return 0 },
-        munge_dist_metafile     => sub { return $_[1] },
-    };
-    
     my $status = Object::Accessor->new;
     $status->mk_accessors(qw[pending_prereqs]);
 
@@ -221,17 +155,6 @@ Returns the object on success, or dies on failure.
         return $args;
     }
 
-=pod
-
-=head2 $bool = $internals->_flush( list => \@caches )
-
-Flushes the designated caches from the C<CPANPLUS> object.
-
-Returns true on success, false if one or more caches could not be
-be flushed.
-
-=cut
-
     sub _flush {
         my $self = shift;
         my $conf = $self->configure_object;
@@ -292,58 +215,6 @@ be flushed.
 ### if extra callbacks are added, don't forget to update the
 ### 02-internals.t test script with them!
 
-=pod 
-
-=head2 $bool = $internals->_register_callback( name => CALLBACK_NAME, code => CODEREF );
-
-Registers a callback for later use by the internal libraries.
-
-Here is a list of the currently used callbacks:
-
-=over 4
-
-=item install_prerequisite
-
-Is called when the user wants to be C<asked> about what to do with
-prerequisites. Should return a boolean indicating true to install
-the prerequisite and false to skip it.
-
-=item send_test_report
-
-Is called when the user should be prompted if he wishes to send the
-test report. Should return a boolean indicating true to send the 
-test report and false to skip it.
-
-=item munge_test_report
-
-Is called when the test report message has been composed, giving
-the user a chance to programatically alter it. Should return the 
-(munged) message to be sent.
-
-=item edit_test_report
-
-Is called when the user should be prompted to edit test reports
-about to be sent out by Test::Reporter. Should return a boolean 
-indicating true to edit the test report in an editor and false 
-to skip it.
-
-=item proceed_on_test_failure
-
-Is called when 'make test' or 'Build test' fails. Should return
-a boolean indicating whether the install should continue even if
-the test failed.
-
-=item munge_dist_metafile
-
-Is called when the C<CPANPLUS::Dist::*> metafile is created, like
-C<control> for C<CPANPLUS::Dist::Deb>, giving the user a chance to
-programatically alter it. Should return the (munged) text to be
-written to the metafile.
-
-=back
-
-=cut
-
     sub _register_callback {
         my $self = shift or return;
         my %hash = @_;
@@ -399,17 +270,6 @@ written to the metafile.
 
 }
 
-=pod
-
-=head2 $bool = $internals->_add_to_includepath( directories => \@dirs )
-
-Adds a list of directories to the include path.
-This means they get added to C<@INC> as well as C<$ENV{PERL5LIB}>.
-
-Returns true on success, false on failure.
-
-=cut
-
 sub _add_to_includepath {
     my $self = shift;
     my %hash = @_;
@@ -436,30 +296,6 @@ sub _add_to_includepath {
 
     return 1;
 }
-
-=pod
-
-=head2 $id = CPANPLUS::Internals->_last_id
-
-Return the id of the last object stored.
-
-=head2 $id = CPANPLUS::Internals->_store_id( $internals )
-
-Store this object; return its id.
-
-=head2 $obj = CPANPLUS::Internals->_retrieve_id( $ID )
-
-Retrieve an object based on its ID -- return false on error.
-
-=head2 CPANPLUS::Internals->_remove_id( $ID )
-
-Remove the object marked by $ID from storage.
-
-=head2 @objs = CPANPLUS::Internals->_return_all_objects
-
-Return all stored objects.
-
-=cut
 
 
 ### code for storing multiple objects

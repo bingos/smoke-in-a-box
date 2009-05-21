@@ -35,48 +35,6 @@ for my $meth ( qw[conf _lib _perl5lib]) {
 }
 
 
-=pod
-
-=head1 NAME
-
-CPANPLUS::Configure
-
-=head1 SYNOPSIS
-
-    $conf   = CPANPLUS::Configure->new( );
-
-    $bool   = $conf->can_save;
-    $bool   = $conf->save( $where );
-
-    @opts   = $conf->options( $type );
-
-    $make       = $conf->get_program('make');
-    $verbose    = $conf->set_conf( verbose => 1 );
-
-=head1 DESCRIPTION
-
-This module deals with all the configuration issues for CPANPLUS.
-Users can use objects created by this module to alter the behaviour
-of CPANPLUS.
-
-Please refer to the C<CPANPLUS::Backend> documentation on how to
-obtain a C<CPANPLUS::Configure> object.
-
-=head1 METHODS
-
-=head2 $Configure = CPANPLUS::Configure->new( load_configs => BOOL )
-
-This method returns a new object. Normal users will never need to
-invoke the C<new> method, but instead retrieve the desired object via
-a method call on a C<CPANPLUS::Backend> object.
-
-=item load_configs
-
-Controls wether or not additional user configurations are to be loaded 
-or not. Defaults to C<true>.
-
-=cut
-
 ### store teh CPANPLUS::Config object in a closure, so we only
 ### initialize it once.. otherwise, on a 2nd ->new, settings
 ### from configs on top of this one will be reset
@@ -112,21 +70,6 @@ or not. Defaults to C<true>.
         return $self;
     }
 }
-
-=head2 $bool = $Configure->init( [rescan => BOOL])
-
-Initialize the configure with other config files than just
-the default 'CPANPLUS::Config'.
-
-Called from C<new()> to load user/system configurations
-
-If the C<rescan> option is provided, your disk will be
-examined again to see if there are new config files that
-could be read. Defaults to C<false>.
-
-Returns true on success, false on failure.
-
-=cut
 
 ### move the Module::Pluggable detection to runtime, rather
 ### than compile time, so that a simple 'require CPANPLUS'
@@ -249,15 +192,6 @@ Returns true on success, false on failure.
 }
 =pod
 
-=head2 can_save( [$config_location] )
-
-Check if we can save the configuration to the specified file.
-If no file is provided, defaults to your personal config.
-
-Returns true if the file can be saved, false otherwise.
-
-=cut
-
 sub can_save {
     my $self = shift;
     my $file = shift || CONFIG_USER_FILE->();
@@ -267,23 +201,6 @@ sub can_save {
     chmod 0644, $file;
     return (-w $file);
 }
-
-=pod
-
-=head2 $file = $conf->save( [$package_name] )
-
-Saves the configuration to the package name you provided.
-If this package is not C<CPANPLUS::Config::System>, it will
-be saved in your C<.cpanplus> directory, otherwise it will
-be attempted to be saved in the system wide directory.
-
-If no argument is provided, it will default to your personal
-config.
-
-Returns the full path to the file if the config was saved, 
-false otherwise.
-
-=cut
 
 sub _config_pm_to_file {
     my $self = shift;
@@ -418,16 +335,6 @@ _END_OF_CONFIG_
     return $file;
 }
 
-=pod
-
-=head2 options( type => TYPE )
-
-Returns a list of all valid config options given a specific type
-(like for example C<conf> of C<program>) or false if the type does
-not exist
-
-=cut
-
 sub options {
     my $self = shift;
     my $conf = $self->conf;
@@ -447,63 +354,6 @@ sub options {
                 $self->conf;
     return;
 }
-
-=pod
-
-=head1 ACCESSORS
-
-Accessors that start with a C<_> are marked private -- regular users
-should never need to use these.
-
-See the C<CPANPLUS::Config> documentation for what items can be
-set and retrieved.
-
-=head2 get_SOMETHING( ITEM, [ITEM, ITEM, ... ] );
-
-The C<get_*> style accessors merely retrieves one or more desired
-config options.
-
-=head2 set_SOMETHING( ITEM => VAL, [ITEM => VAL, ITEM => VAL, ... ] );
-
-The C<set_*> style accessors set the current value for one
-or more config options and will return true upon success, false on
-failure.
-
-=head2 add_SOMETHING( ITEM => VAL, [ITEM => VAL, ITEM => VAL, ... ] );
-
-The C<add_*> style accessor adds a new key to a config key.
-
-Currently, the following accessors exist:
-
-=over 4
-
-=item set|get_conf
-
-Simple configuration directives like verbosity and favourite shell.
-
-=item set|get_program
-
-Location of helper programs.
-
-=item _set|_get_build
-
-Locations of where to put what files for CPANPLUS.
-
-=item _set|_get_source
-
-Locations and names of source files locally.
-
-=item _set|_get_mirror
-
-Locations and names of source files remotely.
-
-=item _set|_get_fetch
-
-Special settings pertaining to the fetching of files.
-
-=back
-
-=cut
 
 sub AUTOLOAD {
     my $self    = shift;
@@ -596,30 +446,6 @@ sub AUTOLOAD {
 sub DESTROY { 1 };
 
 1;
-
-=pod
-
-=head1 BUG REPORTS
-
-Please report bugs or other issues to E<lt>bug-cpanplus@rt.cpan.org<gt>.
-
-=head1 AUTHOR
-
-This module by Jos Boumans E<lt>kane@cpan.orgE<gt>.
-
-=head1 COPYRIGHT
-
-The CPAN++ interface (of which this module is a part of) is copyright (c) 
-2001 - 2007, Jos Boumans E<lt>kane@cpan.orgE<gt>. All rights reserved.
-
-This library is free software; you may redistribute and/or modify it 
-under the same terms as Perl itself.
-
-=head1 SEE ALSO
-
-L<CPANPLUS::Backend>, L<CPANPLUS::Configure::Setup>, L<CPANPLUS::Config>
-
-=cut
 
 # Local variables:
 # c-indentation-style: bsd

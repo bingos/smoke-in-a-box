@@ -70,90 +70,6 @@ $Params::Check::VERBOSE = 1;
 }
 
 
-=pod
-
-=head1 NAME
-
-CPANPLUS::Internals::Source
-
-=head1 SYNOPSIS
-
-    ### lazy load author/module trees ###
-
-    $cb->_author_tree;
-    $cb->_module_tree;
-
-=head1 DESCRIPTION
-
-CPANPLUS::Internals::Source controls the updating of source files and
-the parsing of them into usable module/author trees to be used by
-C<CPANPLUS>.
-
-Functions exist to check if source files are still C<good to use> as
-well as update them, and then parse them.
-
-The flow looks like this:
-
-    $cb->_author_tree || $cb->_module_tree
-        $cb->_check_trees
-            $cb->__check_uptodate
-                $cb->_update_source
-            $cb->__update_custom_module_sources 
-                $cb->__update_custom_module_source
-        $cb->_build_trees
-            ### engine methods
-            {   $cb->_init_trees;
-                $cb->_standard_trees_completed
-                $cb->_custom_trees_completed
-            }                
-            $cb->__create_author_tree
-                ### engine methods
-                { $cb->_add_author_object }
-            $cb->__create_module_tree
-                $cb->__create_dslip_tree
-                ### engine methods
-                { $cb->_add_module_object }
-            $cb->__create_custom_module_entries                    
-
-    $cb->_dslip_defs
-
-=head1 METHODS
-
-=cut
-
-=pod
-
-=head2 $cb->_build_trees( uptodate => BOOL, [use_stored => BOOL, path => $path, verbose => BOOL] )
-
-This method rebuilds the author- and module-trees from source.
-
-It takes the following arguments:
-
-=over 4
-
-=item uptodate
-
-Indicates whether any on disk caches are still ok to use.
-
-=item path
-
-The absolute path to the directory holding the source files.
-
-=item verbose
-
-A boolean flag indicating whether or not to be verbose.
-
-=item use_stored
-
-A boolean flag indicating whether or not it is ok to use previously
-stored trees. Defaults to true.
-
-=back
-
-Returns a boolean indicating success.
-
-=cut
-
 ### (re)build the trees ###
 sub _build_trees {
     my ($self, %hash)   = @_;
@@ -244,36 +160,6 @@ sub _build_trees {
     return 1;
 }
 
-=pod
-
-=head2 $cb->_check_trees( [update_source => BOOL, path => PATH, verbose => BOOL] )
-
-Retrieve source files and return a boolean indicating whether or not
-the source files are up to date.
-
-Takes several arguments:
-
-=over 4
-
-=item update_source
-
-A flag to force re-fetching of the source files, even
-if they are still up to date.
-
-=item path
-
-The absolute path to the directory holding the source files.
-
-=item verbose
-
-A boolean flag indicating whether or not to be verbose.
-
-=back
-
-Will get information from the config file by default.
-
-=cut
-
 ### retrieve source files, and returns a boolean indicating if it's up to date
 sub _check_trees {
     my ($self, %hash) = @_;
@@ -324,42 +210,6 @@ sub _check_trees {
     return $uptodate;
 }
 
-=pod
-
-=head2 $cb->__check_uptodate( file => $file, name => $name, [update_source => BOOL, verbose => BOOL] )
-
-C<__check_uptodate> checks if a given source file is still up-to-date
-and if not, or when C<update_source> is true, will re-fetch the source
-file.
-
-Takes the following arguments:
-
-=over 4
-
-=item file
-
-The source file to check.
-
-=item name
-
-The internal shortcut name for the source file (used for config
-lookups).
-
-=item update_source
-
-Flag to force updating of sourcefiles regardless.
-
-=item verbose
-
-Boolean to indicate whether to be verbose or not.
-
-=back
-
-Returns a boolean value indicating whether the current files are up
-to date or not.
-
-=cut
-
 ### this method checks whether or not the source files we are using are still up to date
 sub __check_uptodate {
     my $self = shift;
@@ -398,35 +248,6 @@ sub __check_uptodate {
         return 1;
     }
 }
-
-=pod
-
-=head2 $cb->_update_source( name => $name, [path => $path, verbose => BOOL] )
-
-This method does the actual fetching of source files.
-
-It takes the following arguments:
-
-=over 4
-
-=item name
-
-The internal shortcut name for the source file (used for config
-lookups).
-
-=item path
-
-The full path where to write the files.
-
-=item verbose
-
-Boolean to indicate whether to be verbose or not.
-
-=back
-
-Returns a boolean to indicate success.
-
-=cut
 
 ### this sub fetches new source files ###
 sub _update_source {
@@ -478,38 +299,6 @@ sub _update_source {
 
     return 1;
 }
-
-=pod
-
-=head2 $cb->__create_author_tree([path => $path, uptodate => BOOL, verbose => BOOL])
-
-This method opens a source files and parses its contents into a
-searchable author-tree or restores a file-cached version of a
-previous parse, if the sources are uptodate and the file-cache exists.
-
-It takes the following arguments:
-
-=over 4
-
-=item uptodate
-
-A flag indicating whether the file-cache is uptodate or not.
-
-=item path
-
-The absolute path to the directory holding the source files.
-
-=item verbose
-
-A boolean flag indicating whether or not to be verbose.
-
-=back
-
-Will get information from the config file by default.
-
-Returns a tree on success, false on failure.
-
-=cut
 
 sub __create_author_tree {
     my $self = shift;
@@ -564,38 +353,6 @@ sub __create_author_tree {
     return $self->_atree;
 
 } #__create_author_tree
-
-=pod
-
-=head2 $cb->_create_mod_tree([path => $path, uptodate => BOOL, verbose => BOOL])
-
-This method opens a source files and parses its contents into a
-searchable module-tree or restores a file-cached version of a
-previous parse, if the sources are uptodate and the file-cache exists.
-
-It takes the following arguments:
-
-=over 4
-
-=item uptodate
-
-A flag indicating whether the file-cache is up-to-date or not.
-
-=item path
-
-The absolute path to the directory holding the source files.
-
-=item verbose
-
-A boolean flag indicating whether or not to be verbose.
-
-=back
-
-Will get information from the config file by default.
-
-Returns a tree on success, false on failure.
-
-=cut
 
 ### this builds a hash reference with the structure of the cpan module tree ###
 sub _create_mod_tree {
@@ -711,38 +468,6 @@ sub _create_mod_tree {
 
 } #_create_mod_tree
 
-=pod
-
-=head2 $cb->__create_dslip_tree([path => $path, uptodate => BOOL, verbose => BOOL])
-
-This method opens a source files and parses its contents into a
-searchable dslip-tree or restores a file-cached version of a
-previous parse, if the sources are uptodate and the file-cache exists.
-
-It takes the following arguments:
-
-=over 4
-
-=item uptodate
-
-A flag indicating whether the file-cache is uptodate or not.
-
-=item path
-
-The absolute path to the directory holding the source files.
-
-=item verbose
-
-A boolean flag indicating whether or not to be verbose.
-
-=back
-
-Will get information from the config file by default.
-
-Returns a tree on success, false on failure.
-
-=cut
-
 sub __create_dslip_tree {
     my $self = shift;
     my %hash = @_;
@@ -829,15 +554,6 @@ sub __create_dslip_tree {
 
 } #__create_dslip_tree
 
-=pod
-
-=head2 $cb->_dslip_defs ()
-
-This function returns the definition structure (ARRAYREF) of the
-dslip tree.
-
-=cut
-
 ### these are the definitions used for dslip info
 ### they shouldn't change over time.. so hardcoding them doesn't appear to
 ### be a problem. if it is, we need to parse 03modlist.data better to filter
@@ -900,14 +616,6 @@ sub _dslip_defs {
     return $aref;
 }
 
-=head2 $file = $cb->_add_custom_module_source( uri => URI, [verbose => BOOL] ); 
-
-Adds a custom source index and updates it based on the provided URI.
-
-Returns the full path to the index file on success or false on failure.
-
-=cut
-
 sub _add_custom_module_source {
     my $self = shift;
     my $conf = $self->configure_object;
@@ -966,13 +674,6 @@ sub _add_custom_module_source {
     return $index;
 }
 
-=head2 $index = $cb->__custom_module_source_index_file( uri => $uri );
-
-Returns the full path to the encoded index file for C<$uri>, as used by
-all C<custom module source> routines.
-
-=cut
-
 sub __custom_module_source_index_file {
     my $self = shift;
     my $conf = $self->configure_object;
@@ -993,14 +694,6 @@ sub __custom_module_source_index_file {
 
     return $index;
 }
-
-=head2 $file = $cb->_remove_custom_module_source( uri => URI, [verbose => BOOL] ); 
-
-Removes a custom index file based on the URI provided.
-
-Returns the full path to the index file on success or false on failure.
-
-=cut
 
 sub _remove_custom_module_source {
     my $self = shift;
@@ -1042,17 +735,6 @@ sub _remove_custom_module_source {
     return $file;
 }
 
-=head2 %files = $cb->__list_custom_module_sources
-
-This method scans the 'custom-sources' directory in your base directory
-for additional sources to include in your module tree.
-
-Returns a list of key value pairs as follows:
-
-  /full/path/to/source/file%3Fencoded => http://decoded/mirror/path
-
-=cut
-
 sub __list_custom_module_sources {
     my $self = shift;
     my $conf = $self->configure_object;
@@ -1083,17 +765,6 @@ sub __list_custom_module_sources {
 
     return %files;    
 }
-
-=head2 $bool = $cb->__update_custom_module_sources( [verbose => BOOL] );
-
-Attempts to update all the index files to your custom module sources.
-
-If the index is missing, and it's a C<file://> uri, it will generate
-a new local index for you.
-
-Return true on success, false on failure.
-
-=cut
 
 sub __update_custom_module_sources {
     my $self = shift;
@@ -1126,17 +797,6 @@ sub __update_custom_module_sources {
     return if $fail;
     return 1;
 }
-
-=head2 $ok = $cb->__update_custom_module_source 
-
-Attempts to update all the index files to your custom module sources.
-
-If the index is missing, and it's a C<file://> uri, it will generate
-a new local index for you.
-
-Return true on success, false on failure.
-
-=cut
 
 sub __update_custom_module_source {
     my $self = shift;
@@ -1234,16 +894,6 @@ sub __update_custom_module_source {
     return $local;
 }
 
-=head2 $bool = $cb->__write_custom_module_index( path => /path/to/packages, [to => /path/to/index/file, verbose => BOOL] )
-
-Scans the C<path> you provided for packages and writes an index with all 
-the available packages to C<$path/packages.txt>. If you'd like the index
-to be written to a different file, provide the C<to> argument.
-
-Returns true on success and false on failure.
-
-=cut
-
 sub __write_custom_module_index {
     my $self = shift;
     my $conf = $self->configure_object;
@@ -1305,15 +955,6 @@ sub __write_custom_module_index {
     return $to;
 }
 
-
-=head2 $bool = $cb->__create_custom_module_entries( [verbose => BOOL] ) 
-
-Creates entries in the module tree based upon the files as returned
-by C<__list_custom_module_sources>.
-
-Returns true on success, false on failure.
-
-=cut 
 
 ### use $auth_obj as a persistant version, so we don't have to recreate
 ### modules all the time

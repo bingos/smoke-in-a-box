@@ -15,79 +15,6 @@ use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
 $Params::Check::VERBOSE = 1;
 
-=pod
-
-=head1 NAME
-
-CPANPLUS::Internals::Fetch
-
-=head1 SYNOPSIS
-
-    my $output = $cb->_fetch(
-                        module      => $modobj,
-                        fetchdir    => '/path/to/save/to',
-                        verbose     => BOOL,
-                        force       => BOOL,
-                    );
-
-    $cb->_add_fail_host( host => 'foo.com' );
-    $cb->_host_ok(       host => 'foo.com' );
-
-
-=head1 DESCRIPTION
-
-CPANPLUS::Internals::Fetch fetches files from either ftp, http, file
-or rsync mirrors.
-
-This is the rough flow:
-
-    $cb->_fetch
-        Delegate to File::Fetch;
-
-
-=head1 METHODS
-
-=cut
-
-=head1 $path = _fetch( module => $modobj, [fetchdir => '/path/to/save/to', fetch_from => 'scheme://path/to/fetch/from', verbose => BOOL, force => BOOL, prefer_bin => BOOL, ttl => $seconds] )
-
-C<_fetch> will fetch files based on the information in a module
-object. You always need a module object. If you want a fake module
-object for a one-off fetch, look at C<CPANPLUS::Module::Fake>.
-
-C<fetchdir> is the place to save the file to. Usually this
-information comes from your configuration, but you can override it
-expressly if needed.
-
-C<fetch_from> lets you specify an URI to get this file from. If you
-do not specify one, your list of configured hosts will be probed to
-download the file from.
-
-C<force> forces a new download, even if the file already exists.
-
-C<verbose> simply indicates whether or not to print extra messages.
-
-C<prefer_bin> indicates whether you prefer the use of commandline
-programs over perl modules. Defaults to your corresponding config
-setting.
-
-C<ttl> (in seconds) indicates how long a cached copy is valid for. If
-the fetch time of the local copy is within the ttl, the cached copy is
-returned. Otherwise, the file is refetched.
-
-C<_fetch> figures out, based on the host list, what scheme to use and
-from there, delegates to C<File::Fetch> do the actual fetching.
-
-Returns the path of the output file on success, false on failure.
-
-Note that you can set a C<blacklist> on certain methods in the config.
-Simply add the identifying name of the method (ie, C<lwp>) to:
-    $conf->_set_fetch( blacklist => ['lwp'] );
-
-And the C<LWP> function will be skipped by C<File::Fetch>.
-
-=cut
-
 sub _fetch {
     my $self = shift;
     my $conf = $self->configure_object;
@@ -413,22 +340,6 @@ sub __file_fetch {
 
     return;
 }
-
-=pod
-
-=head2 _add_fail_host( host => $host_hashref )
-
-Mark a particular host as bad. This makes C<CPANPLUS::Internals::Fetch>
-skip it in fetches until this cache is flushed.
-
-=head2 _host_ok( host => $host_hashref )
-
-Query the cache to see if this host is ok, or if it has been flagged
-as bad.
-
-Returns true if the host is ok, false otherwise.
-
-=cut
 
 {   ### caching functions ###
 

@@ -16,39 +16,6 @@ use vars qw[@ISA $SHELL $DEFAULT];
 
 $DEFAULT    = SHELL_DEFAULT;
 
-=pod
-
-=head1 NAME
-
-CPANPLUS::Shell
-
-=head1 SYNOPSIS
-
-    use CPANPLUS::Shell;             # load the shell indicated by your
-                                     # config -- defaults to
-                                     # CPANPLUS::Shell::Default
-
-    use CPANPLUS::Shell qw[Classic]  # load CPANPLUS::Shell::Classic;
-
-    my $ui      = CPANPLUS::Shell->new();
-    my $name    = $ui->which;        # Find out what shell you loaded
-
-    $ui->shell;                      # run the ui shell
-
-
-=head1 DESCRIPTION
-
-This module is the generic loading (and base class) for all C<CPANPLUS>
-shells. Through this module you can load any installed C<CPANPLUS>
-shell.
-
-Just about all the functionality is provided by the shell that you have
-loaded, and not by this class (which merely functions as a generic
-loading class), so please consult the documentation of your shell of
-choice.
-
-=cut
-
 sub import {
     my $class   = shift;
     my $option  = shift;
@@ -307,30 +274,6 @@ sub _pager_close {
 }
 
 1;
-
-=pod
-
-=head1 BUG REPORTS
-
-Please report bugs or other issues to E<lt>bug-cpanplus@rt.cpan.org<gt>.
-
-=head1 AUTHOR
-
-This module by Jos Boumans E<lt>kane@cpan.orgE<gt>.
-
-=head1 COPYRIGHT
-
-The CPAN++ interface (of which this module is a part of) is copyright (c) 
-2001 - 2007, Jos Boumans E<lt>kane@cpan.orgE<gt>. All rights reserved.
-
-This library is free software; you may redistribute and/or modify it 
-under the same terms as Perl itself.
-
-=head1 SEE ALSO
-
-L<CPANPLUS::Shell::Default>, L<CPANPLUS::Shell::Classic>, L<cpanp>
-
-=cut
 
 # Local variables:
 # c-indentation-style: bsd

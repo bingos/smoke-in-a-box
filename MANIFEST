@@ -1,5 +1,5 @@
-Changes
 bin/smokeinabox
+Changes
 cpansmokebox/bin/cpan2dist
 cpansmokebox/bin/cpanp
 cpansmokebox/bin/cpanp-boxed
@@ -112,6 +112,7 @@ inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
 inc/Module/Install/NoAutomatedTesting.pm
 inc/Module/Install/ReadmeFromPod.pm
+inc/Module/Install/Scripts.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/App/Smoke/In/A/Box.pm
@@ -123,3 +124,4 @@ README
 t/00_compile.t
 t/99_pod.t
 t/99_pod_coverage.t
+tools/strip-pod.pl

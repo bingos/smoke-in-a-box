@@ -18,110 +18,6 @@ use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
 local $Params::Check::VERBOSE = 1;
 
-=pod
-
-=head1 NAME
-
-CPANPLUS::Dist::MM
-
-=head1 SYNOPSIS
-
-    $mm = CPANPLUS::Dist::MM->new( module => $modobj );
-    
-    $mm->create;        # runs make && make test
-    $mm->install;       # runs make install
-
-    
-=head1 DESCRIPTION
-
-C<CPANPLUS::Dist::MM> is a distribution class for MakeMaker related
-modules.
-Using this package, you can create, install and uninstall perl 
-modules. It inherits from C<CPANPLUS::Dist>.
-
-=head1 ACCESSORS
-
-=over 4
-
-=item parent()
-
-Returns the C<CPANPLUS::Module> object that parented this object.
-
-=item status()
-
-Returns the C<Object::Accessor> object that keeps the status for
-this module.
-
-=back
-
-=head1 STATUS ACCESSORS 
-
-All accessors can be accessed as follows:
-    $mm->status->ACCESSOR
-
-=over 4
-
-=item makefile ()
-
-Location of the Makefile (or Build file). 
-Set to 0 explicitly if something went wrong.
-
-=item make ()
-
-BOOL indicating if the C<make> (or C<Build>) command was successful.
-
-=item test ()
-
-BOOL indicating if the C<make test> (or C<Build test>) command was 
-successful.
-
-=item prepared ()
-
-BOOL indicating if the C<prepare> call exited succesfully
-This gets set after C<perl Makefile.PL>
-
-=item distdir ()
-
-Full path to the directory in which the C<prepare> call took place,
-set after a call to C<prepare>. 
-
-=item created ()
-
-BOOL indicating if the C<create> call exited succesfully. This gets
-set after C<make> and C<make test>.
-
-=item installed ()
-
-BOOL indicating if the module was installed. This gets set after
-C<make install> (or C<Build install>) exits successfully.
-
-=item uninstalled ()
-
-BOOL indicating if the module was uninstalled properly.
-
-=item _create_args ()
-
-Storage of the arguments passed to C<create> for this object. Used
-for recursive calls when satisfying prerequisites.
-
-=item _install_args ()
-
-Storage of the arguments passed to C<install> for this object. Used
-for recursive calls when satisfying prerequisites.
-
-=back
-
-=cut
-
-=head1 METHODS
-
-=head2 $bool = $dist->format_available();
-
-Returns a boolean indicating whether or not you can use this package
-to create and install modules in your environment.
-
-=cut
-
 ### check if the format is available ###
 sub format_available {
     my $dist = shift;
@@ -153,15 +49,6 @@ sub format_available {
     return 1;     
 }
 
-=pod $bool = $dist->init();
-
-Sets up the C<CPANPLUS::Dist::MM> object for use. 
-Effectively creates all the needed status accessors.
-
-Called automatically whenever you create a new C<CPANPLUS::Dist> object.
-
-=cut
-
 sub init {
     my $dist    = shift;
     my $status  = $dist->status;
@@ -172,27 +59,6 @@ sub init {
     
     return 1;
 }    
-
-=pod $bool = $dist->prepare([perl => '/path/to/perl', makemakerflags => 'EXTRA=FLAGS', force => BOOL, verbose => BOOL])
-
-C<prepare> preps a distribution for installation. This means it will 
-run C<perl Makefile.PL> and determine what prerequisites this distribution
-declared.
-
-If you set C<force> to true, it will go over all the stages of the 
-C<prepare> process again, ignoring any previously cached results. 
-
-When running C<perl Makefile.PL>, the environment variable
-C<PERL5_CPANPLUS_IS_EXECUTING> will be set to the full path of the
-C<Makefile.PL> that is being executed. This enables any code inside
-the C<Makefile.PL> to know that it is being installed via CPANPLUS.
-
-Returns true on success and false on failure.
-
-You may then call C<< $dist->create >> on the object to create the
-installable files.
-
-=cut
 
 sub prepare {
     ### just in case you already did a create call for this module object
@@ -438,18 +304,6 @@ sub prepare {
     return $dist->status->prepared( $fail ? 0 : 1);
 }
 
-=pod
-
-=head2 $href = $dist->_find_prereqs( file => '/path/to/Makefile', [verbose => BOOL])
-
-Parses a C<Makefile> for C<PREREQ_PM> entries and distills from that
-any prerequisites mentioned in the C<Makefile>
-
-Returns a hash with module-version pairs on success and false on
-failure.
-
-=cut
-
 sub _find_prereqs {
     my $dist = shift;
     my $self = $dist->parent;
@@ -495,27 +349,6 @@ sub _find_prereqs {
     ### just to make sure it's not the same reference ###
     return { %$href };                              
 }     
-
-=pod
-
-=head2 $bool = $dist->create([perl => '/path/to/perl', make => '/path/to/make', makeflags => 'EXTRA=FLAGS', prereq_target => TARGET, skiptest => BOOL, force => BOOL, verbose => BOOL])
-
-C<create> creates the files necessary for installation. This means 
-it will run C<make> and C<make test>.  This will also scan for and 
-attempt to satisfy any prerequisites the module may have. 
-
-If you set C<skiptest> to true, it will skip the C<make test> stage.
-If you set C<force> to true, it will go over all the stages of the 
-C<make> process again, ignoring any previously cached results. It 
-will also ignore a bad return value from C<make test> and still allow 
-the operation to return true.
-
-Returns true on success and false on failure.
-
-You may then call C<< $dist->install >> on the object to actually
-install it.
-
-=cut
 
 sub create {
     ### just in case you already did a create call for this module object
@@ -723,17 +556,6 @@ sub create {
     return $dist->status->created( $fail ? 0 : 1);
 } 
 
-=pod
-
-=head2 $bool = $dist->install([make => '/path/to/make',  makemakerflags => 'EXTRA=FLAGS', force => BOOL, verbose => BOOL])
-
-C<install> runs the following command:
-    make install
-
-Returns true on success, false on failure.    
-
-=cut
-
 sub install {
 
     ### just in case you did the create with ANOTHER dist object linked
@@ -822,21 +644,6 @@ sub install {
     return $dist->status->installed( $fail ? 0 : 1 );
     
 }
-
-=pod
-
-=head2 $bool = $dist->write_makefile_pl([force => BOOL, verbose => BOOL])
-
-This routine can write a C<Makefile.PL> from the information in a 
-module object. It is used to write a C<Makefile.PL> when the original
-author forgot it (!!).
-
-Returns 1 on success and false on failure.
-
-The file gets written to the directory the module's been extracted 
-to.
-
-=cut
 
 sub write_makefile_pl {
     ### just in case you already did a call for this module object

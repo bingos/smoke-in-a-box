@@ -69,93 +69,6 @@ my $Shell;
 my $Brand   = loc('CPAN Terminal');
 my $Prompt  = $Brand . '> ';
 
-=pod
-
-=head1 NAME
-
-CPANPLUS::Shell::Default
-
-=head1 SYNOPSIS
-
-    ### loading the shell:
-    $ cpanp                     # run 'cpanp' from the command line
-    $ perl -MCPANPLUS -eshell   # load the shell from the command line
-
-
-    use CPANPLUS::Shell qw[Default];        # load this shell via the API
-                                            # always done via CPANPLUS::Shell
-
-    my $ui = CPANPLUS::Shell->new;
-    $ui->shell;                             # run the shell
-    $ui->dispatch_on_input( input => 'x');  # update the source using the
-                                            # dispatch method
-
-    ### when in the shell:
-    ### Note that all commands can also take options.
-    ### Look at their underlying CPANPLUS::Backend methods to see
-    ### what options those are.
-    cpanp> h                 # show help messages
-    cpanp> ?                 # show help messages
-
-    cpanp> m Acme            # find acme modules, allows regexes
-    cpanp> a KANE            # find modules by kane, allows regexes
-    cpanp> f Acme::Foo       # get a list of all releases of Acme::Foo
-
-    cpanp> i Acme::Foo       # install Acme::Foo
-    cpanp> i Acme-Foo-1.3    # install version 1.3 of Acme::Foo
-    cpanp> i <URI>           # install from URI, like ftp://foo.com/X.tgz
-    cpanp> i 1 3..5          # install search results 1, 3, 4 and 5
-    cpanp> i *               # install all search results
-    cpanp> a KANE; i *;      # find modules by kane, install all results
-    cpanp> t Acme::Foo       # test Acme::Foo, without installing it
-    cpanp> u Acme::Foo       # uninstall Acme::Foo
-    cpanp> d Acme::Foo       # download Acme::Foo
-    cpanp> z Acme::Foo       # download & extract Acme::Foo, then open a
-                             # shell in the extraction directory
-
-    cpanp> c Acme::Foo       # get a list of test results for Acme::Foo
-    cpanp> l Acme::Foo       # view details about the Acme::Foo package
-    cpanp> r Acme::Foo       # view Acme::Foo's README file
-    cpanp> o                 # get a list of all installed modules that
-                             # are out of date
-    cpanp> o 1..3            # list uptodateness from a previous search 
-                            
-    cpanp> s conf            # show config settings
-    cpanp> s conf md5 1      # enable md5 checks
-    cpanp> s program         # show program settings
-    cpanp> s edit            # edit config file
-    cpanp> s reconfigure     # go through initial configuration again
-    cpanp> s selfupdate      # update your CPANPLUS install
-    cpanp> s save            # save config to disk
-    cpanp> s mirrors         # show currently selected mirrors
-
-    cpanp> ! [PERL CODE]     # execute the following perl code
-
-    cpanp> b                 # create an autobundle for this computers
-                             # perl installation
-    cpanp> x                 # reload index files (purges cache)
-    cpanp> x --update_source # reload index files, get fresh source files
-    cpanp> p [FILE]          # print error stack (to a file)
-    cpanp> v                 # show the banner
-    cpanp> w                 # show last search results again
-
-    cpanp> q                 # quit the shell
-
-    cpanp> /plugins          # list avialable plugins
-    cpanp> /? PLUGIN         # list help test of <PLUGIN>                  
-
-    ### common options:
-    cpanp> i ... --skiptest # skip tests
-    cpanp> i ... --force    # force all operations
-    cpanp> i ... --verbose  # run in verbose mode
-
-=head1 DESCRIPTION
-
-This module provides the default user interface to C<CPANPLUS>. You
-can start it via the C<cpanp> binary, or as detailed in the L<SYNOPSIS>.
-
-=cut
-
 sub new {
     my $class   = shift;
 
@@ -1860,30 +1773,6 @@ sub _read_configuration_from_rc {
 1;
 
 __END__
-
-=pod
-
-=head1 BUG REPORTS
-
-Please report bugs or other issues to E<lt>bug-cpanplus@rt.cpan.org<gt>.
-
-=head1 AUTHOR
-
-This module by Jos Boumans E<lt>kane@cpan.orgE<gt>.
-
-=head1 COPYRIGHT
-
-The CPAN++ interface (of which this module is a part of) is copyright (c) 
-2001 - 2007, Jos Boumans E<lt>kane@cpan.orgE<gt>. All rights reserved.
-
-This library is free software; you may redistribute and/or modify it 
-under the same terms as Perl itself.
-
-=head1 SEE ALSO
-
-L<CPANPLUS::Shell::Classic>, L<CPANPLUS::Shell>, L<cpanp>
-
-=cut
 
 # Local variables:
 # c-indentation-style: bsd

@@ -9,82 +9,6 @@ BEGIN {
 }
         
 
-=pod
-
-=head1 NAME
-
-Log::Message::Simple
-
-=head1 SYNOPSIS
-
-    use Log::Message::Simple qw[msg error debug
-                                carp croak cluck confess];
-
-    use Log::Message::Simple qw[:STD :CARP];
-
-    ### standard reporting functionality
-    msg(    "Connecting to database",           $verbose );
-    error(  "Database connection failed: $@",   $verbose );
-    debug(  "Connection arguments were: $args", $debug );
-
-    ### standard carp functionality
-    carp(   "Wrong arguments passed: @_" );
-    croak(  "Fatal: wrong arguments passed: @_" );
-    cluck(  "Wrong arguments passed -- including stacktrace: @_" );
-    confess("Fatal: wrong arguments passed -- including stacktrace: @_" );
-
-    ### retrieve individual message
-    my @stack = Log::Message::Simple->stack;
-    my @stack = Log::Message::Simple->flush;
-
-    ### retrieve the entire stack in printable form
-    my $msgs  = Log::Message::Simple->stack_as_string;
-    my $trace = Log::Message::Simple->stack_as_string(1);
-
-    ### redirect output
-    local $Log::Message::Simple::MSG_FH     = \*STDERR;
-    local $Log::Message::Simple::ERROR_FH   = \*STDERR;
-    local $Log::Message::Simple::DEBUG_FH   = \*STDERR;
-    
-    ### force a stacktrace on error
-    local $Log::Message::Simple::STACKTRACE_ON_ERROR = 1
-
-=head1 DESCRIPTION
-
-This module provides standardized logging facilities using the
-C<Log::Message> module.
-
-=head1 FUNCTIONS
-
-=head2 msg("message string" [,VERBOSE])
-
-Records a message on the stack, and prints it to C<STDOUT> (or actually
-C<$MSG_FH>, see the C<GLOBAL VARIABLES> section below), if the
-C<VERBOSE> option is true.
-The C<VERBOSE> option defaults to false.
-
-Exported by default, or using the C<:STD> tag.
-
-=head2 debug("message string" [,VERBOSE])
-
-Records a debug message on the stack, and prints it to C<STDOUT> (or
-actually C<$DEBUG_FH>, see the C<GLOBAL VARIABLES> section below), 
-if the C<VERBOSE> option is true.
-The C<VERBOSE> option defaults to false.
-
-Exported by default, or using the C<:STD> tag.
-
-=head2 error("error string" [,VERBOSE])
-
-Records an error on the stack, and prints it to C<STDERR> (or actually
-C<$ERROR_FH>, see the C<GLOBAL VARIABLES> sections below), if the
-C<VERBOSE> option is true.
-The C<VERBOSE> options defaults to true.
-
-Exported by default, or using the C<:STD> tag.
-
-=cut 
-
 {   package Log::Message::Handlers;
     
     sub msg {
@@ -136,58 +60,6 @@ Exported by default, or using the C<:STD> tag.
         return;
     }
 }
-
-=head2 carp();
-
-Provides functionality equal to C<Carp::carp()> while still logging
-to the stack.
-
-Exported by using the C<:CARP> tag.
-
-=head2 croak();
-
-Provides functionality equal to C<Carp::croak()> while still logging
-to the stack.
-
-Exported by using the C<:CARP> tag.
-
-=head2 confess();
-
-Provides functionality equal to C<Carp::confess()> while still logging
-to the stack.
-
-Exported by using the C<:CARP> tag.
-
-=head2 cluck();
-
-Provides functionality equal to C<Carp::cluck()> while still logging
-to the stack.
-
-Exported by using the C<:CARP> tag.
-
-=head1 CLASS METHODS
-
-=head2 Log::Message::Simple->stack()
-
-Retrieves all the items on the stack. Since C<Log::Message::Simple> is
-implemented using C<Log::Message>, consult its manpage for the
-function C<retrieve> to see what is returned and how to use the items.
-
-=head2 Log::Message::Simple->stack_as_string([TRACE])
-
-Returns the whole stack as a printable string. If the C<TRACE> option is
-true all items are returned with C<Carp::longmess> output, rather than
-just the message.
-C<TRACE> defaults to false.
-
-=head2 Log::Message::Simple->flush()
-
-Removes all the items from the stack and returns them. Since
-C<Log::Message::Simple> is  implemented using C<Log::Message>, consult its
-manpage for the function C<retrieve> to see what is returned and how
-to use the items.
-
-=cut
 
 BEGIN {
     use Exporter;
@@ -243,33 +115,6 @@ BEGIN {
                     } __PACKAGE__->stack;
     }
 }
-
-=head1 GLOBAL VARIABLES
-
-=over 4
-
-=item $ERROR_FH
-
-This is the filehandle all the messages sent to C<error()> are being
-printed. This defaults to C<*STDERR>.
-
-=item $MSG_FH
-
-This is the filehandle all the messages sent to C<msg()> are being
-printed. This default to C<*STDOUT>.
-
-=item $DEBUG_FH
-
-This is the filehandle all the messages sent to C<debug()> are being
-printed. This default to C<*STDOUT>.
-
-=item $STACKTRACE_ON_ERROR
-
-If this option is set to C<true>, every call to C<error()> will 
-generate a stacktrace using C<Carp::shortmess()>.
-Defaults to C<false>
-
-=cut
 
 BEGIN {
     use vars qw[ $ERROR_FH $MSG_FH $DEBUG_FH $STACKTRACE_ON_ERROR ];

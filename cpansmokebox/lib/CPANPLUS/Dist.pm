@@ -18,92 +18,6 @@ use base 'Object::Accessor';
 
 local $Params::Check::VERBOSE = 1;
 
-=pod
-
-=head1 NAME
-
-CPANPLUS::Dist
-
-=head1 SYNOPSIS
-
-    my $dist = CPANPLUS::Dist::YOUR_DIST_TYPE_HERE->new(
-                                module  => $modobj,
-                            );
-
-=head1 DESCRIPTION
-
-C<CPANPLUS::Dist> is a base class for C<CPANPLUS::Dist::MM>
-and C<CPANPLUS::Dist::Build>. Developers of other C<CPANPLUS::Dist::*>
-plugins should look at C<CPANPLUS::Dist::Base>.
-
-=head1 ACCESSORS
-
-=over 4
-
-=item parent()
-
-Returns the C<CPANPLUS::Module> object that parented this object.
-
-=item status()
-
-Returns the C<Object::Accessor> object that keeps the status for
-this module.
-
-=back
-
-=head1 STATUS ACCESSORS
-
-All accessors can be accessed as follows:
-    $deb->status->ACCESSOR
-
-=over 4
-
-=item created()
-
-Boolean indicating whether the dist was created successfully.
-Explicitly set to C<0> when failed, so a value of C<undef> may be
-interpreted as C<not yet attempted>.
-
-=item installed()
-
-Boolean indicating whether the dist was installed successfully.
-Explicitly set to C<0> when failed, so a value of C<undef> may be
-interpreted as C<not yet attempted>.
-
-=item uninstalled()
-
-Boolean indicating whether the dist was uninstalled successfully.
-Explicitly set to C<0> when failed, so a value of C<undef> may be
-interpreted as C<not yet attempted>.
-
-=item dist()
-
-The location of the final distribution. This may be a file or
-directory, depending on how your distribution plug in of choice
-works. This will be set upon a successful create.
-
-=cut
-
-=back
-
-=head2 $dist = CPANPLUS::Dist::YOUR_DIST_TYPE_HERE->new( module => MODOBJ );
-
-Create a new C<CPANPLUS::Dist::YOUR_DIST_TYPE_HERE> object based on the 
-provided C<MODOBJ>.
-
-*** DEPRECATED ***
-The optional argument C<format> is used to indicate what type of dist
-you would like to create (like C<CPANPLUS::Dist::MM> or 
-C<CPANPLUS::Dist::Build> and so on ).
-
-C<< CPANPLUS::Dist->new >> is exlusively meant as a method to be
-inherited by C<CPANPLUS::Dist::MM|Build>.
-
-Returns a C<CPANPLUS::Dist::YOUR_DIST_TYPE_HERE> object on success 
-and false on failure.
-
-=cut
-
 sub new {
     my $self    = shift;
     my $class   = ref $self || $self;
@@ -163,12 +77,6 @@ sub new {
     return $obj;
 }
 
-=head2 @dists = CPANPLUS::Dist->dist_types;
-
-Returns a list of the CPANPLUS::Dist::* classes available
-
-=cut
-
 ### returns a list of dist_types we support
 ### will get overridden by Module::Pluggable if loaded
 ### XXX add support for 'plugin' dir in config as well
@@ -217,14 +125,6 @@ Returns a list of the CPANPLUS::Dist::* classes available
         return @Dists;
     }
 
-=head2 $bool = CPANPLUS::Dist->rescan_dist_types;
-
-Rescans C<@INC> for available dist types. Useful if you've installed new
-C<CPANPLUS::Dist::*> classes and want to make them available to the
-current process.
-
-=cut
-    
     sub rescan_dist_types {
         my $dist    = shift;
         $Loaded     = 0;    # reset the flag;
@@ -232,26 +132,12 @@ current process.
     }        
 }
 
-=head2 $bool = CPANPLUS::Dist->has_dist_type( $type )
-
-Returns true if distribution type C<$type> is loaded/supported.
-
-=cut
-
 sub has_dist_type {
     my $dist = shift;
     my $type = shift or return;
     
     return scalar grep { $_ eq $type } CPANPLUS::Dist->dist_types;
 }    
-
-=head2 $bool = $dist->prereq_satisfied( modobj => $modobj, version => $version_spec )
-
-Returns true if this prereq is satisfied.  Returns false if it's not.
-Also issues an error if it seems "unsatisfiable," i.e. if it can't be
-found on CPAN or the latest CPAN version doesn't satisfy it.
-
-=cut
 
 sub prereq_satisfied {
     my $dist = shift;
@@ -281,14 +167,6 @@ sub prereq_satisfied {
 
     return;
 }
-
-=head2 $configure_requires = $dist->find_configure_requires( [file => /path/to/META.yml] )
-
-Reads the configure_requires for this distribution from the META.yml
-file in the root directory and returns a hashref with module names
-and versions required.
-
-=cut
 
 sub find_configure_requires {
     my $self = shift;
@@ -336,29 +214,6 @@ sub find_configure_requires {
     ### and return a copy
     return \%{$configure_requires};
 }
-
-=head2 $bool = $dist->_resolve_prereqs( ... )
-
-Makes sure prerequisites are resolved
-
-    format          The dist class to use to make the prereqs
-                    (ie. CPANPLUS::Dist::MM)
-
-    prereqs         Hash of the prerequisite modules and their versions
-
-    target          What to do with the prereqs.
-                        create  => Just build them
-                        install => Install them
-                        ignore  => Ignore them
-
-    prereq_build    If true, always build the prereqs even if already
-                    resolved
-
-    verbose         Be verbose
-
-    force           Force the prereq to be built, even if already resolved
-
-=cut
 
 sub _resolve_prereqs {
     my $dist = shift;

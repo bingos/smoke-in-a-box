@@ -55,134 +55,6 @@ for ( my $i=0; $i<scalar @$tmpl ; $i+=2 ) {
     }
 }
 
-=head1 NAME
-
-Archive::Tar::File - a subclass for in-memory extracted file from Archive::Tar
-
-=head1 SYNOPSIS
-
-    my @items = $tar->get_files;
-
-    print $_->name, ' ', $_->size, "\n" for @items;
-
-    print $object->get_content;
-    $object->replace_content('new content');
-
-    $object->rename( 'new/full/path/to/file.c' );
-
-=head1 DESCRIPTION
-
-Archive::Tar::Files provides a neat little object layer for in-memory
-extracted files. It's mostly used internally in Archive::Tar to tidy
-up the code, but there's no reason users shouldn't use this API as
-well.
-
-=head2 Accessors
-
-A lot of the methods in this package are accessors to the various
-fields in the tar header:
-
-=over 4
-
-=item name
-
-The file's name
-
-=item mode
-
-The file's mode
-
-=item uid
-
-The user id owning the file
-
-=item gid
-
-The group id owning the file
-
-=item size
-
-File size in bytes
-
-=item mtime
-
-Modification time. Adjusted to mac-time on MacOS if required
-
-=item chksum
-
-Checksum field for the tar header
-
-=item type
-
-File type -- numeric, but comparable to exported constants -- see
-Archive::Tar's documentation
-
-=item linkname
-
-If the file is a symlink, the file it's pointing to
-
-=item magic
-
-Tar magic string -- not useful for most users
-
-=item version
-
-Tar version string -- not useful for most users
-
-=item uname
-
-The user name that owns the file
-
-=item gname
-
-The group name that owns the file
-
-=item devmajor
-
-Device major number in case of a special file
-
-=item devminor
-
-Device minor number in case of a special file
-
-=item prefix
-
-Any directory to prefix to the extraction path, if any
-
-=item raw
-
-Raw tar header -- not useful for most users
-
-=back
-
-=head1 Methods
-
-=head2 Archive::Tar::File->new( file => $path )
-
-Returns a new Archive::Tar::File object from an existing file.
-
-Returns undef on failure.
-
-=head2 Archive::Tar::File->new( data => $path, $data, $opt )
-
-Returns a new Archive::Tar::File object from data.
-
-C<$path> defines the file name (which need not exist), C<$data> the
-file contents, and C<$opt> is a reference to a hash of attributes
-which may be used to override the default attributes (fields in the
-tar header), which are described above in the Accessors section.
-
-Returns undef on failure.
-
-=head2 Archive::Tar::File->new( chunk => $chunk )
-
-Returns a new Archive::Tar::File object from a raw 512-byte tar
-archive chunk.
-
-Returns undef on failure.
-
-=cut
-
 sub new {
     my $class   = shift;
     my $what    = shift;
@@ -440,16 +312,6 @@ sub _downgrade_to_plainfile {
     return 1;
 }
 
-=head2 $bool = $file->extract( [ $alternative_name ] )
-
-Extract this object, optionally to an alternative name. 
-
-See C<< Archive::Tar->extract_file >> for details.
-
-Returns true on success and false on failure.
-
-=cut
-
 sub extract {
     my $self = shift;
     
@@ -457,13 +319,6 @@ sub extract {
     
     return Archive::Tar->_extract_file( $self, @_ );
 }
-
-=head2 $path = $file->full_path
-
-Returns the full path from the tar header; this is basically a
-concatenation of the C<prefix> and C<name> fields.
-
-=cut
 
 sub full_path {
     my $self = shift;
@@ -475,15 +330,6 @@ sub full_path {
     return File::Spec::Unix->catfile( $self->prefix, $self->name );
 }
 
-
-=head2 $bool = $file->validate
-
-Done by Archive::Tar internally when reading the tar file:
-validate the header against the checksum to ensure integer tar file.
-
-Returns true on success, false on failure
-
-=cut
 
 sub validate {
     my $self = shift;
@@ -502,56 +348,21 @@ sub validate {
 	        or (unpack ("%16c*", $raw) == $self->chksum)) ? 1 : 0;
 }
 
-=head2 $bool = $file->has_content
-
-Returns a boolean to indicate whether the current object has content.
-Some special files like directories and so on never will have any
-content. This method is mainly to make sure you don't get warnings
-for using uninitialized values when looking at an object's content.
-
-=cut
-
 sub has_content {
     my $self = shift;
     return defined $self->data() && length $self->data() ? 1 : 0;
 }
-
-=head2 $content = $file->get_content
-
-Returns the current content for the in-memory file
-
-=cut
 
 sub get_content {
     my $self = shift;
     $self->data( );
 }
 
-=head2 $cref = $file->get_content_by_ref
-
-Returns the current content for the in-memory file as a scalar
-reference. Normal users won't need this, but it will save memory if
-you are dealing with very large data files in your tar archive, since
-it will pass the contents by reference, rather than make a copy of it
-first.
-
-=cut
-
 sub get_content_by_ref {
     my $self = shift;
 
     return \$self->{data};
 }
-
-=head2 $bool = $file->replace_content( $content )
-
-Replace the current content of the file with the new content. This
-only affects the in-memory archive, not the on-disk version until
-you write it.
-
-Returns true on success, false on failure.
-
-=cut
 
 sub replace_content {
     my $self = shift;
@@ -561,17 +372,6 @@ sub replace_content {
     $self->size( length $data );
     return 1;
 }
-
-=head2 $bool = $file->rename( $new_name )
-
-Rename the current file to $new_name.
-
-Note that you must specify a Unix path for $new_name, since per tar
-standard, all files in the archive must be Unix paths.
-
-Returns true on success and false on failure.
-
-=cut
 
 sub rename {
     my $self = shift;
@@ -586,63 +386,6 @@ sub rename {
 
 	return 1;
 }
-
-=head1 Convenience methods
-
-To quickly check the type of a C<Archive::Tar::File> object, you can
-use the following methods:
-
-=over 4
-
-=item $file->is_file
-
-Returns true if the file is of type C<file>
-
-=item $file->is_dir
-
-Returns true if the file is of type C<dir>
-
-=item $file->is_hardlink
-
-Returns true if the file is of type C<hardlink>
-
-=item $file->is_symlink
-
-Returns true if the file is of type C<symlink>
-
-=item $file->is_chardev
-
-Returns true if the file is of type C<chardev>
-
-=item $file->is_blockdev
-
-Returns true if the file is of type C<blockdev>
-
-=item $file->is_fifo
-
-Returns true if the file is of type C<fifo>
-
-=item $file->is_socket
-
-Returns true if the file is of type C<socket>
-
-=item $file->is_longlink
-
-Returns true if the file is of type C<LongLink>.
-Should not happen after a successful C<read>.
-
-=item $file->is_label
-
-Returns true if the file is of type C<Label>.
-Should not happen after a successful C<read>.
-
-=item $file->is_unknown
-
-Returns true if the file type is C<unknown>
-
-=back
-
-=cut
 
 #stupid perl5.5.3 needs to warn if it's not numeric
 sub is_file     { local $^W;    FILE      == $_[0]->type }
