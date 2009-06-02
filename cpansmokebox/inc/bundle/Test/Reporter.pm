@@ -18,8 +18,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package Test::Reporter;
-
+use 5.005;
 use strict;
+BEGIN{ if (not $] < 5.006) { require warnings; warnings->import } }
 use Cwd;
 use Config;
 use Carp;
@@ -33,7 +34,7 @@ use constant FAKE_NO_NET_DNS => 0;    # for debugging only
 use constant FAKE_NO_NET_DOMAIN => 0; # for debugging only
 use constant FAKE_NO_MAIL_SEND => 0;  # for debugging only
 
-$VERSION = '1.5203';
+$VERSION = '1.54';
 
 local $^W = 1;
 
@@ -45,6 +46,8 @@ sub new {
         '_address'           => 'cpan-testers@perl.org',
         '_grade'             => undef,
         '_distribution'      => undef,
+        # XXX distfile => undef would break old clients :-( -- dagolden, 2009-03-30 
+        '_distfile'          => '', 
         '_report'            => undef,
         '_subject'           => undef,
         '_from'              => undef,
@@ -70,7 +73,7 @@ sub new {
 
     $self->{_attr} = {   
         map {$_ => 1} qw(   
-            _address _distribution _comments _errstr _via _timeout _debug _dir
+            _address _distribution _distfile _comments _errstr _via _timeout _debug _dir
         )
     };
 
@@ -118,7 +121,7 @@ sub _process_params {
 
     my %params   = @_;
     my @defaults = qw(
-        mx address grade distribution from comments via timeout debug dir perl_version transport_args transport );
+        mx address grade distribution distfile from comments via timeout debug dir perl_version transport_args transport );
     my %defaults = map {$_ => 1} @defaults;
 
     for my $param (keys %params) {   
@@ -154,9 +157,10 @@ sub report {
     return $self->{_report} if $self->{_report_lock};
 
     my $report;
-    $report .= "This distribution has been tested as part of the cpan-testers\n";
-    $report .= "effort to test as many new uploads to CPAN as possible.  See\n";
-    $report .= "http://www.cpantesters.org/\n\n";
+    $report .= "This distribution has been tested as part of the CPAN Testers\n";
+    $report .= "project, supporting the Perl programming language.  See\n";
+    $report .= "http://wiki.cpantesters.org/ for more information or email\n"; 
+    $report .= "questions to cpan-testers-discuss\@perl.org\n\n";
 
     if (not $self->{_comments}) {
         $report .= "\n\n--\n\n";
@@ -546,7 +550,7 @@ sub _start_editor {
 
     $editor = $self->_prompt('Editor', $editor);
 
-    die __PACKAGE__, ": The editor `$editor' could not be run" if system "$editor $Report";
+    die __PACKAGE__, ": The editor `$editor' could not be run on '$Report': $!" if system "$editor $Report";
     die __PACKAGE__, ": Report has disappeared; terminated" unless -e $Report;
     die __PACKAGE__, ": Empty report; terminated" unless -s $Report > 2;
 }
