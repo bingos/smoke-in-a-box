@@ -12,11 +12,13 @@ cpansmokebox/inc/bundle/Archive/Extract.pm
 cpansmokebox/inc/bundle/Archive/Tar.pm
 cpansmokebox/inc/bundle/Archive/Tar/Constant.pm
 cpansmokebox/inc/bundle/Archive/Tar/File.pm
+cpansmokebox/inc/bundle/Class/Inspector.pm
 cpansmokebox/inc/bundle/Config/IniFiles.pm
 cpansmokebox/inc/bundle/CPANPLUS/Dist/YACSmoke.pm
 cpansmokebox/inc/bundle/CPANPLUS/YACSmoke.pm
 cpansmokebox/inc/bundle/Devel/InnerPackage.pm
 cpansmokebox/inc/bundle/File/Fetch.pm
+cpansmokebox/inc/bundle/File/Fetch/Item.pm
 cpansmokebox/inc/bundle/File/Spec.pm
 cpansmokebox/inc/bundle/File/Spec/Cygwin.pm
 cpansmokebox/inc/bundle/File/Spec/Epoc.pm
