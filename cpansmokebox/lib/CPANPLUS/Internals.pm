@@ -42,7 +42,7 @@ use vars qw[@ISA $VERSION];
             CPANPLUS::Internals::Report
         ];
 
-$VERSION = "0.8601";
+$VERSION = "0.87_02";
 
 ### autogenerate accessors ###
 for my $key ( qw[_conf _id _modules _hosts _methods _status

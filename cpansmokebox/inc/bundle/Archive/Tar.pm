@@ -22,7 +22,7 @@ require Exporter;
 
 use strict;
 use vars qw[$DEBUG $error $VERSION $WARN $FOLLOW_SYMLINK $CHOWN $CHMOD
-            $DO_NOT_USE_PREFIX $HAS_PERLIO $HAS_IO_STRING
+            $DO_NOT_USE_PREFIX $HAS_PERLIO $HAS_IO_STRING $SAME_PERMISSIONS
             $INSECURE_EXTRACT_MODE @ISA @EXPORT
          ];
 
@@ -31,9 +31,10 @@ use vars qw[$DEBUG $error $VERSION $WARN $FOLLOW_SYMLINK $CHOWN $CHMOD
 $DEBUG                  = 0;
 $WARN                   = 1;
 $FOLLOW_SYMLINK         = 0;
-$VERSION                = "1.48";
+$VERSION                = "1.50";
 $CHOWN                  = 1;
 $CHMOD                  = 1;
+$SAME_PERMISSIONS       = $> == 0 ? 1 : 0;
 $DO_NOT_USE_PREFIX      = 0;
 $INSECURE_EXTRACT_MODE  = 0;
 
@@ -659,7 +660,11 @@ sub _extract_file {
     ### only chmod if we're allowed to, but never chmod symlinks, since they'll
     ### change the perms on the file they're linking too...
     if( $CHMOD and not -l $full ) {
-        chmod $entry->mode, $full or
+        my $mode = $entry->mode;
+        unless ($SAME_PERMISSIONS) {
+            $mode &= ~(oct(7000) | umask);
+        }
+        chmod $mode, $full or
             $self->_error( qq[Could not chown '$full' to ] . $entry->mode );
     }
 

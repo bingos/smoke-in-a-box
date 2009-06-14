@@ -14,6 +14,7 @@ use CPANPLUS::Backend::RV;
 use FileHandle;
 use File::Spec                  ();
 use File::Spec::Unix            ();
+use File::Basename		();
 use Params::Check               qw[check];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
@@ -202,6 +203,42 @@ sub parse_module {
         ### perhaps we can find it in the module tree?
         my $maybe = $self->module_tree($mod);
         return $maybe if IS_MODOBJ->( module => $maybe );
+    }
+
+    ### Special case arbitary file paths such as '.' etc.
+    if (-d File::Spec->rel2abs($mod) ) {
+        my $dir    = File::Spec->rel2abs($mod);
+        my $parent = File::Spec->rel2abs( File::Spec->catdir( $dir, '..' ) );
+
+        my $dist   = $mod = File::Basename::basename($dir);
+        $dist     .= '-0'      unless $dist =~ /\-[0-9._]+$/;
+        $dist     .= '.tar.gz' unless $dist =~ /\.[A-Za-z]+$/;
+
+        my $modobj = CPANPLUS::Module::Fake->new(
+                        module  => $mod,
+                        version => 0,
+                        package => $dist,
+                        path    => $parent,
+                        author  => CPANPLUS::Module::Author::Fake->new
+                    );
+
+        ### better guess for the version
+        $modobj->version( $modobj->package_version ) 
+            if defined $modobj->package_version;
+        
+        ### better guess at module name, if possible
+        if ( my $pkgname = $modobj->package_name ) {
+            $pkgname =~ s/-/::/g;
+        
+            ### no sense replacing it unless we changed something
+            $modobj->module( $pkgname ) 
+                if ($pkgname ne $modobj->package_name) || $pkgname !~ /-/;
+        }                
+
+        $modobj->status->fetch( $parent );
+        $modobj->status->extract( $dir );
+        $modobj->get_installer_type;
+        return $modobj;
     }
 
     ### ok, so it looks like a distribution then?
