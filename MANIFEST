@@ -14,6 +14,7 @@ cpansmokebox/inc/bundle/Archive/Tar/Constant.pm
 cpansmokebox/inc/bundle/Archive/Tar/File.pm
 cpansmokebox/inc/bundle/Class/Inspector.pm
 cpansmokebox/inc/bundle/Config/IniFiles.pm
+cpansmokebox/inc/bundle/CPANPLUS/Config/YACSmoke.pm
 cpansmokebox/inc/bundle/CPANPLUS/Dist/YACSmoke.pm
 cpansmokebox/inc/bundle/CPANPLUS/YACSmoke.pm
 cpansmokebox/inc/bundle/Devel/InnerPackage.pm

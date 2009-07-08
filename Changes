@@ -1,6 +1,9 @@
 Changelog for Smoke-In-A-Box
 ============================
 
+0.12  Wed Jul  8 22:24:16 BST 2009
+  - Missed one of the bundled files
+
 0.10  Wed Jul  8 22:17:35 BST 2009
   - Updated CPANPLUS to 0.88
   - Updated Config::IniFiles to 2.52
