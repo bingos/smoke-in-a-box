@@ -1,6 +1,11 @@
 Changelog for Smoke-In-A-Box
 ============================
 
+0.10  Wed Jul  8 22:17:35 BST 2009
+  - Updated CPANPLUS to 0.88
+  - Updated Config::IniFiles to 2.52
+  - Updated CPANPLUS::YACSmoke to 0.42
+
 0.08  Mon Jun 29 06:37:28 BST 2009
   - Updated CPANPLUS to 0.87_03
 

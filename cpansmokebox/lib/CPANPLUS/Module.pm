@@ -478,6 +478,9 @@ sub dist {
     
     
     DIST: {
+        ### just wanted the $dist object?
+        last DIST if $target eq TARGET_INIT;
+    
         ### first prepare the dist
         $dist->prepare( %$args ) or return;
         $self->status->prepared(1);
@@ -523,7 +526,7 @@ sub install {
                         ### match this allow list with Dist->_resolve_prereqs
             target     => { default => TARGET_INSTALL, store => \$target,
                             allow   => [TARGET_PREPARE, TARGET_CREATE,
-                                        TARGET_INSTALL] },
+                                        TARGET_INSTALL, TARGET_INIT ] },
             force      => { default => $conf->get_conf('force'), },
             verbose    => { default => $conf->get_conf('verbose'), },
             format     => { default => $conf->get_conf('dist_type'),

@@ -2,7 +2,7 @@ package Config::IniFiles;
 
 use vars qw($VERSION);
 
-$VERSION = "2.49";
+$VERSION = "2.52";
 
 require 5.004;
 use strict;
@@ -160,6 +160,12 @@ sub val {
 
 sub exists {
 	my ($self, $sect, $parm)=@_;
+
+    if ($self->{nocase}) {
+        $sect = lc($sect);
+        $parm = lc($parm);
+    }
+    
 	return (exists $self->{v}{$sect}{$parm});
 }
 
@@ -808,12 +814,6 @@ sub SetFileName {
   }
   return undef;
 }
-
-# OutputConfig
-#
-# Writes OutputConfig to STDOUT. Use select() to redirect STDOUT to
-# the output target before calling this function. Optional argument
-# should be set to 1 if writing only delta.
 
 sub OutputConfig {
     my ($self, $delta) = @_;
@@ -1560,8 +1560,6 @@ sub DESTROY  {
 
 1;
 
-
-1;
 
 1;
 

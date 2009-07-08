@@ -34,7 +34,7 @@ our %EXPORT_TAGS = (
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT    = ( @{ $EXPORT_TAGS{'default'} } );
 
-$VERSION = '0.34';
+$VERSION = '0.42';
 
 {
   my %Checked;
@@ -68,13 +68,14 @@ sub new {
   # Override configure settings
   $conf->set_conf( prereqs => 2 ); # force to ask callback
   $conf->set_conf( skiptest => 0 ); 
+  $conf->set_conf( no_update => 1 ); # Don't reindex during smoking
   $conf->set_conf( dist_type => 'CPANPLUS::Dist::YACSmoke' ); # this is where the magic happens.
   $conf->set_conf( cpantest => 'dont_cc' ); # Yes, we want to report test results. But not CC
   $conf->set_conf( verbose => 1 ); # set verbosity to true.
 
   unless ( defined $ENV{MAILDOMAIN} ) {
      my $hostpart = ( split /\@/, ( $conf->get_conf( 'email' ) || 'smoker@cpantesters.org' ) )[1];
-     $ENV{MAILDOMAIN} = $hostpart eq 'cpan.org' ? 'cpantesters.org' : $hostpart;
+     $ENV{MAILDOMAIN} = $hostpart =~ /^(cpan\.org|gmail\.com)$/i ? 'cpantesters.org' : $hostpart;
   }
 
   if ( $^V gt v5.9.5 ) {
@@ -88,7 +89,7 @@ sub new {
   my $cb   = CPANPLUS::Backend->new($conf);
 
   my $exclude_dists;
-  my $config_file = catfile( CPANPLUS::Internals::Utils->_home_dir(), '.cpanplus', CONFIG_FILE );
+  my $config_file = catfile( $conf->get_conf('base'), CONFIG_FILE );
   if ( -r $config_file ) {
      my $cfg = Config::IniFiles->new(-file => $config_file);
      my @list = $cfg->val( 'CONFIG', 'exclude_dists' );
@@ -336,7 +337,7 @@ sub _is_excluded_dist {
 sub _download_list {
   my $self  = shift;
 
-  my $path = $self->{conf}->get_conf('base');
+  my $path  = catdir( CPANPLUS::Internals::Utils->_home_dir(), '.cpanplus' );
   my $local = catfile( $path, RECENT_FILE );
 
   my $hosts = $self->{conf}->get_conf('hosts');
