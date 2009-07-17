@@ -9,6 +9,63 @@ use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
 local $Params::Check::VERBOSE = 1;
 
+=pod
+
+=head1 NAME
+
+CPANPLUS::Module::Author
+
+=head1 SYNOPSIS
+
+    my $author = CPANPLUS::Module::Author->new(
+                    author  => 'Jack Ashton',
+                    cpanid  => 'JACKASH',
+                    _id     => INTERNALS_OBJECT_ID,
+                );
+
+    $author->cpanid;
+    $author->author;
+    $author->email;
+
+    @dists  = $author->distributions;
+    @mods   = $author->modules;
+
+    @accessors = CPANPLUS::Module::Author->accessors;
+
+=head1 DESCRIPTION
+
+C<CPANPLUS::Module::Author> creates objects from the information in the
+source files. These can then be used to query on.
+
+These objects should only be created internally. For C<fake> objects,
+there's the C<CPANPLUS::Module::Author::Fake> class.
+
+=head1 ACCESSORS
+
+An objects of this class has the following accessors:
+
+=over 4
+
+=item author
+
+Name of the author.
+
+=item cpanid
+
+The CPAN id of the author.
+
+=item email
+
+The email address of the author, which defaults to '' if not provided.
+
+=item parent
+
+The C<CPANPLUS::Internals::Object> that spawned this module object.
+
+=back
+
+=cut
+
 my $tmpl = {
     author      => { required => 1 },   # full name of the author
     cpanid      => { required => 1 },   # cpan id
@@ -33,6 +90,19 @@ sub parent {
     return $obj;
 }
 
+=pod
+
+=head1 METHODS
+
+=head2 $auth = CPANPLUS::Module::Author->new( author => AUTHOR_NAME, cpanid => CPAN_ID, _id => INTERNALS_ID [, email => AUTHOR_EMAIL] )
+
+This method returns a C<CPANPLUS::Module::Author> object, based on the given
+parameters.
+
+Returns false on failure.
+
+=cut
+
 sub new {
     my $class   = shift;
     my %hash    = @_;
@@ -45,6 +115,14 @@ sub new {
 
     return bless $object, $class;
 }
+
+=pod
+
+=head2 @mod_objs = $auth->modules()
+
+Return a list of module objects this author has released.
+
+=cut
 
 sub modules {
     my $self    = shift;
@@ -60,6 +138,15 @@ sub modules {
     return @$aref if $aref;
     return;
 }
+
+=pod
+
+=head2 @dists = $auth->distributions()
+
+Returns a list of module objects representing all the distributions
+this author has released.
+
+=cut
 
 sub distributions {
     my $self = shift;
@@ -122,6 +209,16 @@ sub distributions {
     return @rv;
 }
 
+
+=pod
+
+=head1 CLASS METHODS
+
+=head2 accessors ()
+
+Returns a list of all accessor methods to the object
+
+=cut
 
 sub accessors { return keys %$tmpl };
 

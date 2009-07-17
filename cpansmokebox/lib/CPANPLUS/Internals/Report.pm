@@ -17,6 +17,42 @@ $Params::Check::VERBOSE = 1;
 ### for the version ###
 require CPANPLUS::Internals;
 
+=head1 NAME
+
+CPANPLUS::Internals::Report
+
+=head1 SYNOPSIS
+
+  ### enable test reporting
+  $cb->configure_object->set_conf( cpantest => 1 );
+    
+  ### set custom mx host, shouldn't normally be needed
+  $cb->configure_object->set_conf( cpantest_mx => 'smtp.example.com' );
+
+=head1 DESCRIPTION
+
+This module provides all the functionality to send test reports to
+C<http://testers.cpan.org> using the C<Test::Reporter> module.
+
+All methods will be called automatically if you have C<CPANPLUS>
+configured to enable test reporting (see the C<SYNOPSIS>).
+
+=head1 METHODS
+
+=head2 $bool = $cb->_have_query_report_modules
+
+This function checks if all the required modules are here for querying
+reports. It returns true and loads them if they are, or returns false
+otherwise.
+
+=head2 $bool = $cb->_have_send_report_modules
+
+This function checks if all the required modules are here for sending
+reports. It returns true and loads them if they are, or returns false
+otherwise.
+
+=cut
+
 ### XXX remove this list and move it into selfupdate, somehow..
 ### this is dual administration
 {   my $query_list = {
@@ -62,6 +98,55 @@ require CPANPLUS::Internals;
                 : 0;
     }
 }
+
+=head2 @list = $cb->_query_report( module => $modobj, [all_versions => BOOL, verbose => BOOL] )
+
+This function queries the CPAN testers database at
+I<http://testers.cpan.org/> for test results of specified module objects,
+module names or distributions. 
+
+The optional argument C<all_versions> controls whether all versions of
+a given distribution should be grabbed.  It defaults to false
+(fetching only reports for the current version).
+
+Returns the a list with the following data structures (for CPANPLUS
+version 0.042) on success, or false on failure. The contents of the
+data structure depends on what I<http://testers.cpan.org> returns,
+but generally looks like this:
+
+          {
+            'grade' => 'PASS',
+            'dist' => 'CPANPLUS-0.042',
+            'platform' => 'i686-pld-linux-thread-multi'
+            'details' => 'http://nntp.x.perl.org/group/perl.cpan.testers/98316'
+            ...
+          },
+          {
+            'grade' => 'PASS',
+            'dist' => 'CPANPLUS-0.042',
+            'platform' => 'i686-linux-thread-multi'
+            'details' => 'http://nntp.x.perl.org/group/perl.cpan.testers/99416'
+            ...
+          },
+          {
+            'grade' => 'FAIL',
+            'dist' => 'CPANPLUS-0.042',
+            'platform' => 'cygwin-multi-64int',
+            'details' => 'http://nntp.x.perl.org/group/perl.cpan.testers/99371'
+            ...
+          },
+          {
+            'grade' => 'FAIL',
+            'dist' => 'CPANPLUS-0.042',
+            'platform' => 'i586-linux',
+            'details' => 'http://nntp.x.perl.org/group/perl.cpan.testers/99396'
+            ...
+          },
+
+The status of the test can be one of the following:
+UNKNOWN, PASS, FAIL or NA (not applicable).
+
+=cut
 
 sub _query_report {
     my $self = shift;
@@ -138,6 +223,63 @@ sub _query_report {
     return @rv if @rv;
     return;
 }
+
+=pod
+
+=head2 $bool = $cb->_send_report( module => $modobj, buffer => $make_output, failed => BOOL, [save => BOOL, address => $email_to, verbose => BOOL, force => BOOL]);
+
+This function sends a testers report to C<cpan-testers@perl.org> for a
+particular distribution.
+It returns true on success, and false on failure.
+
+It takes the following options:
+
+=over 4
+
+=item module
+
+The module object of this particular distribution
+
+=item buffer
+
+The output buffer from the 'make/make test' process
+
+=item failed
+
+Boolean indicating if the 'make/make test' went wrong
+
+=item save
+
+Boolean indicating if the report should be saved locally instead of
+mailed out. If provided, this function will return the location the
+report was saved to, rather than a simple boolean 'TRUE'.
+
+Defaults to false.
+
+=item address
+
+The email address to mail the report for. You should never need to
+override this, but it might be useful for debugging purposes.
+
+Defaults to C<cpan-testers@perl.org>.
+
+=item verbose
+
+Boolean indicating on whether or not to be verbose.
+
+Defaults to your configuration settings
+
+=item force
+
+Boolean indicating whether to force the sending, even if the max
+amount of reports for fails have already been reached, or if you
+may already have sent it before.
+
+Defaults to your configuration settings
+
+=back
+
+=cut
 
 sub _send_report {
     my $self = shift;

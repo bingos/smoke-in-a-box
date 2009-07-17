@@ -17,6 +17,37 @@ $Params::Check::VERBOSE = 1;
 
 @ISA = qw[ CPANPLUS::Module::Signature ];
 
+=head1 NAME
+
+CPANPLUS::Module::Checksums
+
+=head1 SYNOPSIS
+
+    $file   = $modobj->checksums;
+    $bool   = $mobobj->_validate_checksum;
+
+=head1 DESCRIPTION
+
+This is a class that provides functions for checking the checksum 
+of a distribution. Should not be loaded directly, but used via the
+interface provided via C<CPANPLUS::Module>.
+
+=head1 METHODS
+
+=head2 $mod->checksums
+
+Fetches the checksums file for this module object.
+For the options it can take, see C<CPANPLUS::Module::fetch()>.
+
+Returns the location of the checksums file on success and false
+on error.
+
+The location of the checksums file is also stored as
+
+    $mod->status->checksums
+
+=cut
+
 sub checksums {
     my $mod = shift or return;
 

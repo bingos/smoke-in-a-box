@@ -1,3 +1,2 @@
-#!/usr/bin/perl -w
 use CPANPLUS::YACSmoke;
 test( @ARGV );

@@ -1,6 +1,9 @@
 Changelog for Smoke-In-A-Box
 ============================
 
+0.14  Fri Jul 17 22:26:52 BST 2009
+  - Stripping POD broke CPANPLUS
+
 0.12  Wed Jul  8 22:24:16 BST 2009
   - Missed one of the bundled files
 

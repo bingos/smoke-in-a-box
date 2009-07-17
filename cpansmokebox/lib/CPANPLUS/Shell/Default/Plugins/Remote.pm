@@ -7,6 +7,45 @@ use Params::Check               qw[check];
 use CPANPLUS::Error             qw[error msg];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
+=head1 NAME
+
+CPANPLUS::Shell::Default::Plugins::Remote
+
+=head1 SYNOPSIS
+
+    CPAN Terminal> /connect localhost 1337 --user=foo --pass=bar
+    ...
+    CPAN Terminal@localhost> /disconnect
+
+=head1 DESCRIPTION
+
+This is a C<CPANPLUS::Shell::Default> plugin that allows you to connect
+to a machine running an instance of C<CPANPLUS::Daemon>, allowing remote
+usage of the C<CPANPLUS Shell>.
+
+A sample session, updating all modules on a remote machine, might look
+like this:
+
+    CPAN Terminal> /connect --user=my_user --pass=secret localhost 1337
+
+    Connection accepted
+    
+    Successfully connected to 'localhost' on port '11337'
+    
+    Note that no output will appear until a command has completed
+    -- this may take a while
+
+
+    CPAN Terminal@localhost> o; i *
+    
+    [....]
+    
+    CPAN Terminal@localhost> /disconnect
+
+    CPAN Terminal>
+
+=cut
+
 ### store the original prompt here, so we can restore it on disconnect
 my $Saved_Prompt;
 
@@ -114,6 +153,30 @@ sub disconnect_help {
 
 1; 
         
+=pod
+
+=head1 BUG REPORTS
+
+Please report bugs or other issues to E<lt>bug-cpanplus@rt.cpan.org<gt>.
+
+=head1 AUTHOR
+
+This module by Jos Boumans E<lt>kane@cpan.orgE<gt>.
+
+=head1 COPYRIGHT
+
+The CPAN++ interface (of which this module is a part of) is copyright (c) 
+2001 - 2007, Jos Boumans E<lt>kane@cpan.orgE<gt>. All rights reserved.
+
+This library is free software; you may redistribute and/or modify it 
+under the same terms as Perl itself.
+
+=head1 SEE ALSO
+
+L<CPANPLUS::Shell::Default>, L<CPANPLUS::Shell>, L<cpanp>
+
+=cut
+
 # Local variables:
 # c-indentation-style: bsd
 # c-basic-offset: 4

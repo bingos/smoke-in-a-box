@@ -22,6 +22,12 @@ use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
 $Params::Check::VERBOSE = 1;
 
+=head1 NAME 
+
+CPANPLUS::Internals::Source::Memory - In memory implementation
+
+=cut
+
 ### flag to show if init_trees got its' data from storable. This allows
 ### us to not write an existing stored file back to disk
 {   my $from_storable;
@@ -183,6 +189,40 @@ sub _add_module_object {
     }
 }
 
+=pod
+
+=head2 $cb->__memory_retrieve_source(name => $name, [path => $path, uptodate => BOOL, verbose => BOOL])
+
+This method retrieves a I<storable>d tree identified by C<$name>.
+
+It takes the following arguments:
+
+=over 4
+
+=item name
+
+The internal name for the source file to retrieve.
+
+=item uptodate
+
+A flag indicating whether the file-cache is up-to-date or not.
+
+=item path
+
+The absolute path to the directory holding the source files.
+
+=item verbose
+
+A boolean flag indicating whether or not to be verbose.
+
+=back
+
+Will get information from the config file by default.
+
+Returns a tree on success, false on failure.
+
+=cut
+
 sub __memory_retrieve_source {
     my $self = shift;
     my %hash = @_;
@@ -214,6 +254,33 @@ sub __memory_retrieve_source {
         return;
     }
 }
+
+=pod
+
+=head2 $cb->__memory_save_source([verbose => BOOL, path => $path])
+
+This method saves all the parsed trees in I<storable>d format if
+C<Storable> is available.
+
+It takes the following arguments:
+
+=over 4
+
+=item path
+
+The absolute path to the directory holding the source files.
+
+=item verbose
+
+A boolean flag indicating whether or not to be verbose.
+
+=back
+
+Will get information from the config file by default.
+
+Returns true on success, false on failure.
+
+=cut
 
 sub __memory_save_source {
     my $self = shift;

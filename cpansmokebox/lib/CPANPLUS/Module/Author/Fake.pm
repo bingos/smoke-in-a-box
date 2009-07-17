@@ -13,6 +13,38 @@ use Params::Check   qw[check];
 
 $Params::Check::VERBOSE = 1;
 
+=pod
+
+=head1 NAME
+
+CPANPLUS::Module::Author::Fake
+
+=head1 SYNOPSIS
+
+    my $auth = CPANPLUS::Module::Author::Fake->new(
+                    name    => 'Foo Bar',
+                    email   => 'luser@foo.com',
+                    cpanid  => 'FOO',
+                    _id     => $cpan->id,
+                );
+
+=head1 DESCRIPTION
+
+A class for creating fake author objects, for shortcut use internally
+by CPANPLUS.
+
+Inherits from C<CPANPLUS::Module::Author>.
+
+=head1 METHODS
+
+=head2 new( _id => DIGIT )
+
+Creates a dummy author object. It can take the same options as
+C<< CPANPLUS::Module::Author->new >>, but will fill in default ones
+if none are provided. Only the _id key is required.
+
+=cut
+
 sub new {
     my $class = shift;
     my %hash  = @_;

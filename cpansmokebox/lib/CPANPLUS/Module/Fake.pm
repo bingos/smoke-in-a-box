@@ -13,6 +13,39 @@ use Params::Check   qw[check];
 @ISA = qw[CPANPLUS::Module];
 $Params::Check::VERBOSE = 1;
 
+=pod
+
+=head1 NAME
+
+CPANPLUS::Module::Fake
+
+=head1 SYNOPSIS
+
+    my $obj = CPANPLUS::Module::Fake->new(
+                module  => 'Foo',
+                path    => 'ftp/path/to/foo',
+                author  => CPANPLUS::Module::Author::Fake->new,
+                package => 'fake-1.1.tgz',
+                _id     => $cpan->_id,
+            );
+
+=head1 DESCRIPTION
+
+A class for creating fake module objects, for shortcut use internally
+by CPANPLUS.
+
+Inherits from C<CPANPLUS::Module>.
+
+=head1 METHODS
+
+=head2 new( module => $mod, path => $path, package => $pkg, [_id => DIGIT] )
+
+Creates a dummy module object from the above parameters. It can
+take more options (same as C<< CPANPLUS::Module->new >> but the above
+are required.
+
+=cut
+
 sub new {
     my $class = shift;
     my %hash  = @_;

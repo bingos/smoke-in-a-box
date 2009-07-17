@@ -18,6 +18,12 @@ use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
 use constant TXN_COMMIT => 1000;
 
+=head1 NAME 
+
+CPANPLUS::Internals::Source::SQLite - SQLite implementation
+
+=cut
+
 {   my $Dbh;
     my $DbFile;
 

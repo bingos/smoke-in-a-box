@@ -32,6 +32,70 @@ $ENV{'PERL5_CPANPLUS_IS_RUNNING'} = $$;
 ### so for consistency, just call ->VERSION ourselves as well.
 $ENV{'PERL5_CPANPLUS_IS_VERSION'} = __PACKAGE__->VERSION;
 
+=pod
+
+=head1 NAME
+
+CPANPLUS::Backend
+
+=head1 SYNOPSIS
+
+    my $cb      = CPANPLUS::Backend->new;
+    my $conf    = $cb->configure_object;
+
+    my $author  = $cb->author_tree('KANE');
+    my $mod     = $cb->module_tree('Some::Module');
+    my $mod     = $cb->parse_module( module => 'Some::Module' );
+
+    my @objs    = $cb->search(  type    => TYPE,
+                                allow   => [...] );
+
+    $cb->flush('all');
+    $cb->reload_indices;
+    $cb->local_mirror;
+
+
+=head1 DESCRIPTION
+
+This module provides the programmer's interface to the C<CPANPLUS>
+libraries.
+
+=head1 ENVIRONMENT
+
+When C<CPANPLUS::Backend> is loaded, which is necessary for just
+about every <CPANPLUS> operation, the environment variable
+C<PERL5_CPANPLUS_IS_RUNNING> is set to the current process id.
+
+Additionally, the environment variable C<PERL5_CPANPLUS_IS_VERSION> 
+will be set to the version of C<CPANPLUS::Backend>.
+
+This information might be useful somehow to spawned processes.
+
+=head1 METHODS
+
+=head2 $cb = CPANPLUS::Backend->new( [CONFIGURE_OBJ] )
+
+This method returns a new C<CPANPLUS::Backend> object.
+This also initialises the config corresponding to this object.
+You have two choices in this:
+
+=over 4
+
+=item Provide a valid C<CPANPLUS::Configure> object
+
+This will be used verbatim.
+
+=item No arguments
+
+Your default config will be loaded and used.
+
+=back
+
+New will return a C<CPANPLUS::Backend> object on success and die on
+failure.
+
+=cut
+
 sub new {
     my $class   = shift;
     my $conf;
@@ -46,6 +110,21 @@ sub new {
 
     return $self;
 }
+
+=pod
+
+=head2 $href = $cb->module_tree( [@modules_names_list] )
+
+Returns a reference to the CPANPLUS module tree.
+
+If you give it any arguments, they will be treated as module names
+and C<module_tree> will try to look up these module names and
+return the corresponding module objects instead.
+
+See L<CPANPLUS::Module> for the operations you can perform on a
+module object.
+
+=cut
 
 sub module_tree {
     my $self    = shift;
@@ -82,6 +161,21 @@ sub module_tree {
     }
 }
 
+=pod
+
+=head2 $href = $cb->author_tree( [@author_names_list] )
+
+Returns a reference to the CPANPLUS author tree.
+
+If you give it any arguments, they will be treated as author names
+and C<author_tree> will try to look up these author names and
+return the corresponding author objects instead.
+
+See L<CPANPLUS::Module::Author> for the operations you can perform on
+an author object.
+
+=cut
+
 sub author_tree {
     my $self        = shift;
     my $authtree    = $self->_author_tree;
@@ -97,9 +191,60 @@ sub author_tree {
     }
 }
 
+=pod
+
+=head2 $conf = $cb->configure_object;
+
+Returns a copy of the C<CPANPLUS::Configure> object.
+
+See L<CPANPLUS::Configure> for operations you can perform on a
+configure object.
+
+=cut
+
 sub configure_object { return shift->_conf() };
 
+=head2 $su = $cb->selfupdate_object;
+
+Returns a copy of the C<CPANPLUS::Selfupdate> object.
+
+See the L<CPANPLUS::Selfupdate> manpage for the operations
+you can perform on the selfupdate object.
+
+=cut
+
 sub selfupdate_object { return shift->_selfupdate() };
+
+=pod
+
+=head2 @mods = $cb->search( type => TYPE, allow => AREF, [data => AREF, verbose => BOOL] )
+
+C<search> enables you to search for either module or author objects,
+based on their data. The C<type> you can specify is any of the
+accessors specified in C<CPANPLUS::Module::Author> or
+C<CPANPLUS::Module>. C<search> will determine by the C<type> you
+specified whether to search by author object or module object.
+
+You have to specify an array reference of regular expressions or
+strings to match against. The rules used for this array ref are the
+same as in C<Params::Check>, so read that manpage for details.
+
+The search is an C<or> search, meaning that if C<any> of the criteria
+match, the search is considered to be successful.
+
+You can specify the result of a previous search as C<data> to limit
+the new search to these module or author objects, rather than the
+entire module or author tree.  This is how you do C<and> searches.
+
+Returns a list of module or author objects on success and false
+on failure.
+
+See L<CPANPLUS::Module> for the operations you can perform on a
+module object.
+See L<CPANPLUS::Module::Author> for the operations you can perform on
+an author object.
+
+=cut
 
 sub search {
     my $self = shift;
@@ -132,6 +277,89 @@ sub search {
     return @$aref if $aref;
     return;
 }
+
+=pod
+
+=head2 $backend_rv = $cb->fetch( modules => \@mods )
+
+Fetches a list of modules. C<@mods> can be a list of distribution
+names, module names or module objects--basically anything that
+L<parse_module> can understand.
+
+See the equivalent method in C<CPANPLUS::Module> for details on
+other options you can pass.
+
+Since this is a multi-module method call, the return value is
+implemented as a C<CPANPLUS::Backend::RV> object. Please consult
+that module's documentation on how to interpret the return value.
+
+=head2 $backend_rv = $cb->extract( modules => \@mods )
+
+Extracts a list of modules. C<@mods> can be a list of distribution
+names, module names or module objects--basically anything that
+L<parse_module> can understand.
+
+See the equivalent method in C<CPANPLUS::Module> for details on
+other options you can pass.
+
+Since this is a multi-module method call, the return value is
+implemented as a C<CPANPLUS::Backend::RV> object. Please consult
+that module's documentation on how to interpret the return value.
+
+=head2 $backend_rv = $cb->install( modules => \@mods )
+
+Installs a list of modules. C<@mods> can be a list of distribution
+names, module names or module objects--basically anything that
+L<parse_module> can understand.
+
+See the equivalent method in C<CPANPLUS::Module> for details on
+other options you can pass.
+
+Since this is a multi-module method call, the return value is
+implemented as a C<CPANPLUS::Backend::RV> object. Please consult
+that module's documentation on how to interpret the return value.
+
+=head2 $backend_rv = $cb->readme( modules => \@mods )
+
+Fetches the readme for a list of modules. C<@mods> can be a list of
+distribution names, module names or module objects--basically
+anything that L<parse_module> can understand.
+
+See the equivalent method in C<CPANPLUS::Module> for details on
+other options you can pass.
+
+Since this is a multi-module method call, the return value is
+implemented as a C<CPANPLUS::Backend::RV> object. Please consult
+that module's documentation on how to interpret the return value.
+
+=head2 $backend_rv = $cb->files( modules => \@mods )
+
+Returns a list of files used by these modules if they are installed.
+C<@mods> can be a list of distribution names, module names or module
+objects--basically anything that L<parse_module> can understand.
+
+See the equivalent method in C<CPANPLUS::Module> for details on
+other options you can pass.
+
+Since this is a multi-module method call, the return value is
+implemented as a C<CPANPLUS::Backend::RV> object. Please consult
+that module's documentation on how to interpret the return value.
+
+=head2 $backend_rv = $cb->distributions( modules => \@mods )
+
+Returns a list of module objects representing all releases for this
+module on success.
+C<@mods> can be a list of distribution names, module names or module
+objects, basically anything that L<parse_module> can understand.
+
+See the equivalent method in C<CPANPLUS::Module> for details on
+other options you can pass.
+
+Since this is a multi-module method call, the return value is
+implemented as a C<CPANPLUS::Backend::RV> object. Please consult
+that module's documentation on how to interpret the return value.
+
+=cut
 
 ### XXX add direcotry_tree, packlist etc? or maybe remove files? ###
 for my $func (qw[fetch extract install readme files distributions]) {
@@ -175,6 +403,65 @@ for my $func (qw[fetch extract install readme files distributions]) {
                 );
     }
 }
+
+=pod
+
+=head2 $mod_obj = $cb->parse_module( module => $modname|$distname|$modobj|URI|PATH )
+
+C<parse_module> tries to find a C<CPANPLUS::Module> object that
+matches your query. Here's a list of examples you could give to
+C<parse_module>;
+
+=over 4
+
+=item Text::Bastardize
+
+=item Text-Bastardize
+
+=item Text-Bastardize-1.06
+
+=item AYRNIEU/Text-Bastardize
+
+=item AYRNIEU/Text-Bastardize-1.06
+
+=item AYRNIEU/Text-Bastardize-1.06.tar.gz
+
+=item http://example.com/Text-Bastardize-1.06.tar.gz
+
+=item file:///tmp/Text-Bastardize-1.06.tar.gz
+
+=item /tmp/Text-Bastardize-1.06
+
+=item ./Text-Bastardize-1.06
+
+=item .
+
+=back
+
+These items would all come up with a C<CPANPLUS::Module> object for
+C<Text::Bastardize>. The ones marked explicitly as being version 1.06
+would give back a C<CPANPLUS::Module> object of that version.
+Even if the version on CPAN is currently higher.
+
+The last three are examples of PATH resolution. In the first, we supply
+an absolute path to the unwrapped distribution. In the second the 
+distribution is relative to the current working directory.
+In the third, we will use the current working directory.
+
+If C<parse_module> is unable to actually find the module you are looking
+for in its module tree, but you supplied it with an author, module
+and version part in a distribution name or URI, it will create a fake
+C<CPANPLUS::Module> object for you, that you can use just like the
+real thing.
+
+See L<CPANPLUS::Module> for the operations you can perform on a
+module object.
+
+If even this fancy guessing doesn't enable C<parse_module> to create
+a fake module object for you to use, it will warn about an error and
+return false.
+
+=cut
 
 sub parse_module {
     my $self = shift;
@@ -452,6 +739,25 @@ sub parse_module {
     return;
 }
 
+=pod
+
+=head2 $bool = $cb->reload_indices( [update_source => BOOL, verbose => BOOL] );
+
+This method reloads the source files.
+
+If C<update_source> is set to true, this will fetch new source files
+from your CPAN mirror. Otherwise, C<reload_indices> will do its
+usual cache checking and only update them if they are out of date.
+
+By default, C<update_source> will be false.
+
+The verbose setting defaults to what you have specified in your
+config file.
+
+Returns true on success and false on failure.
+
+=cut
+
 sub reload_indices {
     my $self    = shift;
     my %hash    = @_;
@@ -480,6 +786,53 @@ sub reload_indices {
     return;
 }
 
+=pod
+
+=head2 $bool = $cb->flush(CACHE_NAME)
+
+This method allows flushing of caches.
+There are several things which can be flushed:
+
+=over 4
+
+=item * C<methods>
+
+The return status of methods which have been attempted, such as
+different ways of fetching files.  It is recommended that automatic
+flushing be used instead.
+
+=item * C<hosts>
+
+The return status of URIs which have been attempted, such as
+different hosts of fetching files.  It is recommended that automatic
+flushing be used instead.
+
+=item * C<modules>
+
+Information about modules such as prerequisites and whether
+installation succeeded, failed, or was not attempted.
+
+=item * C<lib>
+
+This resets PERL5LIB, which is changed to ensure that while installing
+modules they are in our @INC.
+
+=item * C<load>
+
+This resets the cache of modules we've attempted to load, but failed.
+This enables you to load them again after a failed load, if they 
+somehow have become available.
+
+=item * C<all>
+
+Flush all of the aforementioned caches.
+
+=back
+
+Returns true on success and false on failure.
+
+=cut
+
 sub flush {
     my $self = shift;
     my $type = shift or return;
@@ -502,6 +855,18 @@ sub flush {
     return $self->_flush( list => $aref );
 }
 
+=pod
+
+=head2 @mods = $cb->installed()
+
+Returns a list of module objects of all your installed modules.
+If an error occurs, it will return false.
+
+See L<CPANPLUS::Module> for the operations you can perform on a
+module object.
+
+=cut
+
 sub installed {
     my $self = shift;
     my $aref = $self->_all_installed;
@@ -509,6 +874,49 @@ sub installed {
     return @$aref if $aref;
     return;
 }
+
+=pod
+
+=head2 $bool = $cb->local_mirror([path => '/dir/to/save/to', index_files => BOOL, force => BOOL, verbose => BOOL] )
+
+Creates a local mirror of CPAN, of only the most recent sources in a
+location you specify. If you set this location equal to a custom host
+in your C<CPANPLUS::Config> you can use your local mirror to install
+from.
+
+It takes the following arguments:
+
+=over 4
+
+=item path
+
+The location where to create the local mirror.
+
+=item index_files
+
+Enable/disable fetching of index files. You can disable fetching of the
+index files if you don't plan to use the local mirror as your primary 
+site, or if you'd like up-to-date index files be fetched from elsewhere.
+
+Defaults to true.
+
+=item force
+
+Forces refetching of packages, even if they are there already.
+
+Defaults to whatever setting you have in your C<CPANPLUS::Config>.
+
+=item verbose
+
+Prints more messages about what its doing.
+
+Defaults to whatever setting you have in your C<CPANPLUS::Config>.
+
+=back
+
+Returns true on success and false on error.
+
+=cut
 
 sub local_mirror {
     my $self = shift;
@@ -586,6 +994,30 @@ sub local_mirror {
 
     return !$flag;
 }
+
+=pod
+
+=head2 $file = $cb->autobundle([path => OUTPUT_PATH, force => BOOL, verbose => BOOL])
+
+Writes out a snapshot of your current installation in C<CPAN> bundle
+style. This can then be used to install the same modules for a
+different or on a different machine by issuing the following commands:
+
+    ### using the default shell:
+    CPAN Terminal> i file://path/to/Snapshot_XXYY.pm
+    
+    ### using the API
+    $modobj = $cb->parse_module( module => 'file://path/to/Snapshot_XXYY.pm' );
+    $modobj->install;
+
+It will, by default, write to an 'autobundle' directory under your
+cpanplus homedirectory, but you can override that by supplying a
+C<path> argument.
+
+It will return the location of the output file on success and false on
+failure.
+
+=cut
 
 sub autobundle {
     my $self = shift;
@@ -695,6 +1127,25 @@ EOF
     return $file;
 }
 
+=head2 $bool = $cb->save_state
+
+Explicit command to save memory state to disk. This can be used to save
+information to disk about where a module was extracted, the result of 
+C<make test>, etc. This will then be re-loaded into memory when a new
+session starts.
+
+The capability of saving state to disk depends on the source engine
+being used (See C<CPANPLUS::Config> for the option to choose your
+source engine). The default storage engine supports this option.
+
+Most users will not need this command, but it can handy for automated
+systems like setting up CPAN smoke testers.
+
+The method will return true if it managed to save the state to disk, 
+or false if it did not.
+
+=cut
+
 sub save_state {
     my $self = shift;
     return $self->_save_state( @_ );
@@ -705,18 +1156,94 @@ sub save_state {
 ### code through source.t and indirectly trought he CustomSource plugin.
 =pod
 
+=head1 CUSTOM MODULE SOURCES
+
+Besides the sources as provided by the general C<CPAN> mirrors, it's 
+possible to add your own sources list to your C<CPANPLUS> index.
+
+The methodology behind this works much like C<Debian's apt-sources>.
+
+The methods below show you how to make use of this functionality. Also
+note that most of these methods are available through the default shell
+plugin command C</cs>, making them available as shortcuts through the
+shell and via the commandline.
+
+=head2 %files = $cb->list_custom_sources
+
+Returns a mapping of registered custom sources and their local indices
+as follows:
+
+    /full/path/to/local/index => http://remote/source
+
+Note that any file starting with an C<#> is being ignored.
+
+=cut
+
 sub list_custom_sources {
     return shift->__list_custom_module_sources( @_ );
 }
+
+=head2 $local_index = $cb->add_custom_source( uri => URI, [verbose => BOOL] );
+
+Adds an C<URI> to your own sources list and mirrors its index. See the 
+documentation on C<< $cb->update_custom_source >> on how this is done.
+
+Returns the full path to the local index on success, or false on failure.
+
+Note that when adding a new C<URI>, the change to the in-memory tree is
+not saved until you rebuild or save the tree to disk again. You can do 
+this using the C<< $cb->reload_indices >> method.
+
+=cut
 
 sub add_custom_source {
     return shift->_add_custom_module_source( @_ );
 }
 
+=head2 $local_index = $cb->remove_custom_source( uri => URI, [verbose => BOOL] );
+
+Removes an C<URI> from your own sources list and removes its index.
+
+To find out what C<URI>s you have as part of your own sources list, use
+the C<< $cb->list_custom_sources >> method.
+
+Returns the full path to the deleted local index file on success, or false
+on failure.
+
+=cut
+
 ### XXX do clever dispatching based on arg number?
 sub remove_custom_source {
     return shift->_remove_custom_module_source( @_ );
 }
+
+=head2 $bool = $cb->update_custom_source( [remote => URI] );
+
+Updates the indexes for all your custom sources. It does this by fetching
+a file called C<packages.txt> in the root of the custom sources's C<URI>.
+If you provide the C<remote> argument, it will only update the index for
+that specific C<URI>.
+
+Here's an example of how custom sources would resolve into index files:
+
+  file:///path/to/sources       =>  file:///path/to/sources/packages.txt
+  http://example.com/sources    =>  http://example.com/sources/packages.txt
+  ftp://example.com/sources     =>  ftp://example.com/sources/packages.txt
+  
+The file C<packages.txt> simply holds a list of packages that can be found
+under the root of the C<URI>. This file can be automatically generated for
+you when the remote source is a C<file:// URI>. For C<http://>, C<ftp://>,
+and similar, the administrator of that repository should run the method
+C<< $cb->write_custom_source_index >> on the repository to allow remote
+users to index it.
+
+For details, see the C<< $cb->write_custom_source_index >> method below.
+
+All packages that are added via this mechanism will be attributed to the
+author with C<CPANID> C<LOCAL>. You can use this id to search for all 
+added packages.
+
+=cut
 
 sub update_custom_source {
     my $self = shift;
@@ -730,11 +1257,52 @@ sub update_custom_source {
     return $rv;
 }    
 
+=head2 $file = $cb->write_custom_source_index( path => /path/to/package/root, [to => /path/to/index/file, verbose => BOOL] );
+
+Writes the index for a custom repository root. Most users will not have to 
+worry about this, but administrators of a repository will need to make sure
+their indexes are up to date.
+
+The index will be written to a file called C<packages.txt> in your repository
+root, which you can specify with the C<path> argument. You can override this
+location by specifying the C<to> argument, but in normal operation, that should
+not be required.
+
+Once the index file is written, users can then add the C<URI> pointing to 
+the repository to their custom list of sources and start using it right away. See the C<< $cb->add_custom_source >> method for user details.
+
+=cut
+
 sub write_custom_source_index {
     return shift->__write_custom_module_index( @_ );
 }
 
 1;
+
+=pod
+
+=head1 BUG REPORTS
+
+Please report bugs or other issues to E<lt>bug-cpanplus@rt.cpan.org<gt>.
+
+=head1 AUTHOR
+
+This module by Jos Boumans E<lt>kane@cpan.orgE<gt>.
+
+=head1 COPYRIGHT
+
+The CPAN++ interface (of which this module is a part of) is copyright (c) 
+2001 - 2007, Jos Boumans E<lt>kane@cpan.orgE<gt>. All rights reserved.
+
+This library is free software; you may redistribute and/or modify it 
+under the same terms as Perl itself.
+
+=head1 SEE ALSO
+
+L<CPANPLUS::Configure>, L<CPANPLUS::Module>, L<CPANPLUS::Module::Author>, 
+L<CPANPLUS::Selfupdate>
+
+=cut
 
 # Local variables:
 # c-indentation-style: bsd

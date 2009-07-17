@@ -8,6 +8,24 @@ use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
 use base qw[CPANPLUS::Dist::Base];
 
+=head1 NAME
+
+CPANPLUS::Dist::Autobundle
+
+=head1 SYNOPSIS
+
+    $modobj = $cb->parse_module( module => 'file://path/to/Snapshot_XXYY.pm' );
+    $modobj->install;
+    
+=head1 DESCRIPTION
+
+C<CPANPLUS::Dist::Autobundle> is a distribution class for installing installation
+snapshots as created by C<CPANPLUS>' C<autobundle> command.
+
+All modules as mentioned in the snapshot will be installed on your system.
+
+=cut
+
 sub init {
     my $dist    = shift;
     my $status  = $dist->status;

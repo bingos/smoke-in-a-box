@@ -10,6 +10,31 @@ use CPANPLUS::Internals::Constants;
 
 $Params::Check::VERBOSE = 1;
 
+=head1 NAME
+
+CPANPLUS::Selfupdate
+
+=head1 SYNOPSIS
+
+    $su     = $cb->selfupdate_object;
+    
+    @feats  = $su->list_features;
+    @feats  = $su->list_enabled_features;
+    
+    @mods   = map { $su->modules_for_feature( $_ ) } @feats;
+    @mods   = $su->list_core_dependencies;
+    @mods   = $su->list_core_modules;
+    
+    for ( @mods ) {
+        print $_->name " should be version " . $_->version_required;
+        print "Installed version is not uptodate!" 
+            unless $_->is_installed_version_sufficient;
+    }
+    
+    $ok     = $su->selfupdate( update => 'all', latest => 0 );
+
+=cut
+
 ### a config has describing our deps etc
 {
 
@@ -155,6 +180,15 @@ $Params::Check::VERBOSE = 1;
     sub _get_config { return $Modules }
 }
 
+=head1 METHODS
+
+=head2 $self = CPANPLUS::Selfupdate->new( $backend_object );
+
+Sets up a new selfupdate object. Called automatically when
+a new backend object is created.
+
+=cut
+
 sub new {
     my $class = shift;
     my $cb    = shift or return;
@@ -188,8 +222,37 @@ sub new {
     };
     
     
+=head2 @cat = $self->list_categories
+
+Returns a list of categories that the C<selfupdate> method accepts.
+
+See C<selfupdate> for details.
+
+=cut
+
     sub list_categories { return sort keys %$cache }
 
+=head2 %list = $self->list_modules_to_update( update => "core|dependencies|enabled_features|features|all", [latest => BOOL] )
+    
+List which modules C<selfupdate> would upgrade. You can update either 
+the core (CPANPLUS itself), the core dependencies, all features you have
+currently turned on, or all features available, or everything.
+
+The C<latest> option determines whether it should update to the latest
+version on CPAN, or if the minimal required version for CPANPLUS is
+good enough.
+    
+Returns a hash of feature names and lists of module objects to be
+upgraded based on the category you provided. For example:
+
+    %list = $self->list_modules_to_update( update => 'core' );
+    
+Would return:
+
+    ( core => [ $module_object_for_cpanplus ] );
+    
+=cut    
+    
     sub list_modules_to_update {
         my $self = shift;
         my $cb   = $self->();
@@ -225,6 +288,20 @@ sub new {
         return %list;
     }
     
+=head2 $bool = $self->selfupdate( update => "core|dependencies|enabled_features|features|all", [latest => BOOL, force => BOOL] )
+
+Selfupdate CPANPLUS. You can update either the core (CPANPLUS itself),
+the core dependencies, all features you have currently turned on, or
+all features available, or everything.
+
+The C<latest> option determines whether it should update to the latest
+version on CPAN, or if the minimal required version for CPANPLUS is
+good enough.
+
+Returns true on success, false on error.
+
+=cut
+
     sub selfupdate {
         my $self = shift;
         my $cb   = $self->();
@@ -259,10 +336,23 @@ sub new {
 
 }
 
+=head2 @features = $self->list_features
+
+Returns a list of features that are supported by CPANPLUS.
+
+=cut
+
 sub list_features {
     my $self = shift;
     return keys %{ $self->_get_config->{'features'} };
 }
+
+=head2 @features = $self->list_enabled_features
+
+Returns a list of features that are enabled in your current
+CPANPLUS installation.
+
+=cut
 
 sub list_enabled_features {
     my $self = shift;
@@ -276,6 +366,19 @@ sub list_enabled_features {
     
     return @enabled;
 }
+
+=head2 @mods = $self->modules_for_feature( FEATURE [,AS_HASH] )
+
+Returns a list of C<CPANPLUS::Selfupdate::Module> objects which 
+represent the modules required to support this feature.
+
+For a list of features, call the C<list_features> method.
+
+If the C<AS_HASH> argument is provided, no module objects are
+returned, but a hashref where the keys are names of the modules,
+and values are their minimum versions.
+
+=cut
 
 sub modules_for_feature {
     my $self    = shift;
@@ -301,6 +404,17 @@ sub modules_for_feature {
 }
 
 
+=head2 @mods = $self->list_core_dependencies( [AS_HASH] )
+
+Returns a list of C<CPANPLUS::Selfupdate::Module> objects which 
+represent the modules that comprise the core dependencies of CPANPLUS.
+
+If the C<AS_HASH> argument is provided, no module objects are
+returned, but a hashref where the keys are names of the modules,
+and values are their minimum versions.
+
+=cut
+
 sub list_core_dependencies {
     my $self    = shift;
     my $as_hash = shift || 0;
@@ -310,6 +424,17 @@ sub list_core_dependencies {
     return $href if $as_hash;
     return $self->_hashref_to_module( $href );
 }
+
+=head2 @mods = $self->list_core_modules( [AS_HASH] )
+
+Returns a list of C<CPANPLUS::Selfupdate::Module> objects which 
+represent the modules that comprise the core of CPANPLUS.
+
+If the C<AS_HASH> argument is provided, no module objects are
+returned, but a hashref where the keys are names of the modules,
+and values are their minimum versions.
+
+=cut
 
 sub list_core_modules {
     my $self    = shift;
@@ -334,6 +459,16 @@ sub _hashref_to_module {
 }        
     
 
+=head1 CPANPLUS::Selfupdate::Module
+
+C<CPANPLUS::Selfupdate::Module> extends C<CPANPLUS::Module> objects
+by providing accessors to aid in selfupdating CPANPLUS.
+
+These objects are returned by all methods of C<CPANPLUS::Selfupdate>
+that return module objects.
+
+=cut
+
 {   package CPANPLUS::Selfupdate::Module;
     use base 'CPANPLUS::Module';
     
@@ -355,11 +490,24 @@ sub _hashref_to_module {
         return $obj;
     }
 
+=head2 $version = $mod->version_required
+
+Returns the version of this module required for CPANPLUS.
+
+=cut
+    
     sub version_required {
         my $self = shift;
         $Cache{ $self->name } = shift() if @_;
         return $Cache{ $self->name };
     }        
+
+=head2 $bool = $mod->is_installed_version_sufficient
+
+Returns true if the installed version of this module is sufficient
+for CPANPLUS, or false if it is not.
+
+=cut
 
     
     sub is_installed_version_sufficient {
@@ -370,6 +518,26 @@ sub _hashref_to_module {
 }    
 
 1;
+
+=pod
+
+=head1 BUG REPORTS
+
+Please report bugs or other issues to E<lt>bug-cpanplus@rt.cpan.org<gt>.
+
+=head1 AUTHOR
+
+This module by Jos Boumans E<lt>kane@cpan.orgE<gt>.
+
+=head1 COPYRIGHT
+
+The CPAN++ interface (of which this module is a part of) is copyright (c) 
+2001 - 2007, Jos Boumans E<lt>kane@cpan.orgE<gt>. All rights reserved.
+
+This library is free software; you may redistribute and/or modify it 
+under the same terms as Perl itself.
+
+=cut
 
 # Local variables:
 # c-indentation-style: bsd

@@ -13,6 +13,41 @@ use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
 local $Params::Check::VERBOSE = 1;
 
+=pod
+
+=head1 NAME
+
+CPANPLUS::Internals::Utils
+
+=head1 SYNOPSIS
+
+    my $bool = $cb->_mkdir( dir => 'blah' );
+    my $bool = $cb->_chdir( dir => 'blah' );
+    my $bool = $cb->_rmdir( dir => 'blah' );
+
+    my $bool = $cb->_move( from => '/some/file', to => '/other/file' );
+    my $bool = $cb->_move( from => '/some/dir',  to => '/other/dir' );
+
+    my $cont = $cb->_get_file_contents( file => '/path/to/file' );
+
+
+    my $version = $cb->_perl_version( perl => $^X );
+
+=head1 DESCRIPTION
+
+C<CPANPLUS::Internals::Utils> holds a few convenience functions for
+CPANPLUS libraries.
+
+=head1 METHODS
+
+=head2 $cb->_mkdir( dir => '/some/dir' )
+
+C<_mkdir> creates a full path to a directory.
+
+Returns true on success, false on failure.
+
+=cut
+
 sub _mkdir {
     my $self = shift;
 
@@ -42,6 +77,16 @@ sub _mkdir {
     return 1;
 }
 
+=pod
+
+=head2 $cb->_chdir( dir => '/some/dir' )
+
+C<_chdir> changes directory to a dir.
+
+Returns true on success, false on failure.
+
+=cut
+
 sub _chdir {
     my $self = shift;
     my %hash = @_;
@@ -59,6 +104,16 @@ sub _chdir {
 
     return 1;
 }
+
+=pod
+
+=head2 $cb->_rmdir( dir => '/some/dir' );
+
+Removes a directory completely, even if it is non-empty.
+
+Returns true on success, false on failure.
+
+=cut
 
 sub _rmdir {
     my $self = shift;
@@ -85,6 +140,17 @@ sub _rmdir {
 
     return 1;
 }
+
+=pod
+
+=head2 $cb->_perl_version ( perl => 'some/perl/binary' );
+
+C<_perl_version> returns the version of a certain perl binary.
+It does this by actually running a command.
+
+Returns the perl version on success and false on failure.
+
+=cut
 
 sub _perl_version {
     my $self = shift;
@@ -114,6 +180,14 @@ sub _perl_version {
     return;
 }
 
+=pod
+
+=head2 $cb->_version_to_number( version => $version );
+
+Returns a proper module version, or '0.0' if none was available.
+
+=cut
+
 sub _version_to_number {
     my $self = shift;
     my %hash = @_;
@@ -129,7 +203,23 @@ sub _version_to_number {
     return '0.0';
 }
 
+=pod
+
+=head2 $cb->_whoami
+
+Returns the name of the subroutine you're currently in.
+
+=cut
+
 sub _whoami { my $name = (caller 1)[3]; $name =~ s/.+:://; $name }
+
+=pod
+
+=head2 _get_file_contents( file => $file );
+
+Returns the contents of a file
+
+=cut
 
 sub _get_file_contents {
     my $self = shift;
@@ -147,6 +237,14 @@ sub _get_file_contents {
 
     return $contents;
 }
+
+=pod $cb->_move( from => $file|$dir, to => $target );
+
+Moves a file or directory to the target.
+
+Returns true on success, false on failure.
+
+=cut
 
 sub _move {
     my $self = shift;
@@ -169,6 +267,14 @@ sub _move {
     }
 }
 
+=pod $cb->_copy( from => $file|$dir, to => $target );
+
+Moves a file or directory to the target.
+
+Returns true on success, false on failure.
+
+=cut
+
 sub _copy {
     my $self = shift;
     my %hash = @_;
@@ -189,6 +295,14 @@ sub _copy {
         return;
     }
 }
+
+=head2 $cb->_mode_plus_w( file => '/path/to/file' );
+
+Sets the +w bit for the file.
+
+Returns true on success, false on failure.
+
+=cut
 
 sub _mode_plus_w {
     my $self = shift;
@@ -216,6 +330,14 @@ sub _mode_plus_w {
     }
 }    
 
+=head2 $uri = $cb->_host_to_uri( scheme => SCHEME, host => HOST, path => PATH );
+
+Turns a CPANPLUS::Config style C<host> entry into an URI string.
+
+Returns the uri on success, and false on failure
+
+=cut
+
 sub _host_to_uri {
     my $self = shift;
     my %hash = @_;
@@ -238,6 +360,12 @@ sub _host_to_uri {
     return "$scheme://" . File::Spec::Unix->catdir( $host, $path ); 
 }
 
+=head2 $cb->_vcmp( VERSION, VERSION );
+
+Normalizes the versions passed and does a '<=>' on them, returning the result.
+
+=cut
+
 sub _vcmp {
     my $self = shift;
     my ($x, $y) = @_;
@@ -246,6 +374,12 @@ sub _vcmp {
 
     return $x <=> $y;
 }
+
+=head2 $cb->_home_dir
+
+Returns the user's homedir, or C<cwd> if it could not be found
+
+=cut
 
 sub _home_dir {
     my @os_home_envs = qw( APPDATA HOME USERPROFILE WINDIR SYS$LOGIN );
@@ -258,6 +392,16 @@ sub _home_dir {
 
     return cwd();
 }
+
+=head2 $path = $cb->_safe_path( path => $path );
+
+Returns a path that's safe to us on Win32 and VMS. 
+
+Only cleans up the path on Win32 if the path exists.
+
+On VMS, it encodes dots to _ using C<VMS::Filespec::vmsify>
+
+=cut
 
 sub _safe_path {
     my $self = shift;
@@ -325,6 +469,19 @@ sub _safe_path {
     return $path;
 }
 
+
+=head2 ($pkg, $version, $ext) = $cb->_split_package_string( package => PACKAGE_STRING );
+
+Splits the name of a CPAN package string up into its package, version 
+and extension parts.
+
+For example, C<Foo-Bar-1.2.tar.gz> would return the following parts:
+
+    Package:    Foo-Bar
+    Version:    1.2
+    Extension:  tar.gz
+
+=cut
 
 {   my $del_re = qr/[-_\+]/i;           # delimiter between elements
     my $pkg_re = qr/[a-z]               # any letters followed by 
