@@ -8,6 +8,7 @@ my $mx;
 GetOptions ( 'email=s', \$email, 'mx=s', \$mx ) or die "Unknown option\n";
 die "Must supply an --email address\n" unless $email;
 my $conf = CPANPLUS::Configure->new();
+$conf->set_conf( cpantest => 'dont_cc' );
 $conf->set_conf( cpantest_mx => $mx ) if $mx;
 $conf->set_conf( email => $email );
 my $hosts = $conf->get_conf( 'hosts' );

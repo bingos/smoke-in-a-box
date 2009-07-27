@@ -1,6 +1,9 @@
 Changelog for Smoke-In-A-Box
 ============================
 
+0.16  Mon Jul 27 11:29:47 BST 2009
+  - cpconf wasn't actually setting cpantest, fixed.
+
 0.14  Fri Jul 17 22:26:52 BST 2009
   - Stripping POD broke CPANPLUS
 
