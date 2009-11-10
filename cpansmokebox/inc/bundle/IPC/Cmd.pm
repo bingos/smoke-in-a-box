@@ -16,7 +16,7 @@ BEGIN {
                         $USE_IPC_RUN $USE_IPC_OPEN3 $WARN
                     ];
 
-    $VERSION        = '0.46';
+    $VERSION        = '0.50';
     $VERBOSE        = 0;
     $DEBUG          = 0;
     $WARN           = 1;
@@ -33,6 +33,72 @@ use Params::Check               qw[check];
 use Text::ParseWords            ();             # import ONLY if needed!
 use Module::Load::Conditional   qw[can_load];
 use Locale::Maketext::Simple    Style => 'gettext';
+
+=pod
+
+=head1 NAME
+
+IPC::Cmd - finding and running system commands made easy
+
+=head1 SYNOPSIS
+
+    use IPC::Cmd qw[can_run run];
+
+    my $full_path = can_run('wget') or warn 'wget is not installed!';
+
+    ### commands can be arrayrefs or strings ###
+    my $cmd = "$full_path -b theregister.co.uk";
+    my $cmd = [$full_path, '-b', 'theregister.co.uk'];
+
+    ### in scalar context ###
+    my $buffer;
+    if( scalar run( command => $cmd,
+                    verbose => 0,
+                    buffer  => \$buffer,
+                    timeout => 20 )
+    ) {
+        print "fetched webpage successfully: $buffer\n";
+    }
+
+
+    ### in list context ###
+    my( $success, $error_code, $full_buf, $stdout_buf, $stderr_buf ) =
+            run( command => $cmd, verbose => 0 );
+
+    if( $success ) {
+        print "this is what the command printed:\n";
+        print join "", @$full_buf;
+    }
+
+    ### check for features
+    print "IPC::Open3 available: "  . IPC::Cmd->can_use_ipc_open3;      
+    print "IPC::Run available: "    . IPC::Cmd->can_use_ipc_run;      
+    print "Can capture buffer: "    . IPC::Cmd->can_capture_buffer;     
+
+    ### don't have IPC::Cmd be verbose, ie don't print to stdout or
+    ### stderr when running commands -- default is '0'
+    $IPC::Cmd::VERBOSE = 0;
+         
+
+=head1 DESCRIPTION
+
+IPC::Cmd allows you to run commands, interactively if desired,
+platform independent but have them still work.
+
+The C<can_run> function can tell you if a certain binary is installed
+and if so where, whereas the C<run> function can actually execute any
+of the commands you give it and give you a clear return value, as well
+as adhere to your verbosity settings.
+
+=head1 CLASS METHODS 
+
+=head2 $ipc_run_version = IPC::Cmd->can_use_ipc_run( [VERBOSE] )
+
+Utility function that tells you if C<IPC::Run> is available. 
+If the verbose flag is passed, it will print diagnostic messages
+if C<IPC::Run> can not be found or loaded.
+
+=cut
 
 
 sub can_use_ipc_run     { 
@@ -51,6 +117,14 @@ sub can_use_ipc_run     {
     ### otherwise, we're good to go
     return $IPC::Run::VERSION;                    
 }
+
+=head2 $ipc_open3_version = IPC::Cmd->can_use_ipc_open3( [VERBOSE] )
+
+Utility function that tells you if C<IPC::Open3> is available. 
+If the verbose flag is passed, it will print diagnostic messages
+if C<IPC::Open3> can not be found or loaded.
+
+=cut
 
 
 sub can_use_ipc_open3   { 
@@ -71,6 +145,13 @@ sub can_use_ipc_open3   {
     return $IPC::Open3::VERSION;
 }
 
+=head2 $bool = IPC::Cmd->can_capture_buffer
+
+Utility function that tells you if C<IPC::Cmd> is capable of
+capturing buffers in it's current configuration.
+
+=cut
+
 sub can_capture_buffer {
     my $self    = shift;
 
@@ -79,6 +160,23 @@ sub can_capture_buffer {
     return;
 }
 
+
+=head1 FUNCTIONS
+
+=head2 $path = can_run( PROGRAM );
+
+C<can_run> takes but a single argument: the name of a binary you wish
+to locate. C<can_run> works much like the unix binary C<which> or the bash
+command C<type>, which scans through your path, looking for the requested
+binary .
+
+Unlike C<which> and C<type>, this function is platform independent and
+will also work on, for example, Win32.
+
+It will return the full path to the binary you asked for if it was
+found, or C<undef> if it was not.
+
+=cut
 
 sub can_run {
     my $command = shift;
@@ -108,6 +206,107 @@ sub can_run {
         }
     }
 }
+
+=head2 $ok | ($ok, $err, $full_buf, $stdout_buff, $stderr_buff) = run( command => COMMAND, [verbose => BOOL, buffer => \$SCALAR, timeout => DIGIT] );
+
+C<run> takes 4 arguments:
+
+=over 4
+
+=item command
+
+This is the command to execute. It may be either a string or an array
+reference.
+This is a required argument.
+
+See L<CAVEATS> for remarks on how commands are parsed and their
+limitations.
+
+=item verbose
+
+This controls whether all output of a command should also be printed
+to STDOUT/STDERR or should only be trapped in buffers (NOTE: buffers
+require C<IPC::Run> to be installed or your system able to work with
+C<IPC::Open3>).
+
+It will default to the global setting of C<$IPC::Cmd::VERBOSE>,
+which by default is 0.
+
+=item buffer
+
+This will hold all the output of a command. It needs to be a reference
+to a scalar.
+Note that this will hold both the STDOUT and STDERR messages, and you
+have no way of telling which is which.
+If you require this distinction, run the C<run> command in list context
+and inspect the individual buffers.
+
+Of course, this requires that the underlying call supports buffers. See
+the note on buffers right above.
+
+=item timeout
+
+Sets the maximum time the command is allowed to run before aborting,
+using the built-in C<alarm()> call. If the timeout is triggered, the
+C<errorcode> in the return value will be set to an object of the 
+C<IPC::Cmd::TimeOut> class. See the C<errorcode> section below for
+details.
+
+Defaults to C<0>, meaning no timeout is set.
+
+=back
+
+C<run> will return a simple C<true> or C<false> when called in scalar
+context.
+In list context, you will be returned a list of the following items:
+
+=over 4
+
+=item success
+
+A simple boolean indicating if the command executed without errors or
+not.
+
+=item error message
+
+If the first element of the return value (success) was 0, then some
+error occurred. This second element is the error message the command
+you requested exited with, if available. This is generally a pretty 
+printed value of C<$?> or C<$@>. See C<perldoc perlvar> for details on 
+what they can contain.
+If the error was a timeout, the C<error message> will be prefixed with
+the string C<IPC::Cmd::TimeOut>, the timeout class.
+
+=item full_buffer
+
+This is an arrayreference containing all the output the command
+generated.
+Note that buffers are only available if you have C<IPC::Run> installed,
+or if your system is able to work with C<IPC::Open3> -- See below).
+This element will be C<undef> if this is not the case.
+
+=item out_buffer
+
+This is an arrayreference containing all the output sent to STDOUT the
+command generated.
+Note that buffers are only available if you have C<IPC::Run> installed,
+or if your system is able to work with C<IPC::Open3> -- See below).
+This element will be C<undef> if this is not the case.
+
+=item error_buffer
+
+This is an arrayreference containing all the output sent to STDERR the
+command generated.
+Note that buffers are only available if you have C<IPC::Run> installed,
+or if your system is able to work with C<IPC::Open3> -- See below).
+This element will be C<undef> if this is not the case.
+
+=back
+
+See the C<HOW IT WORKS> Section below to see how C<IPC::Cmd> decides
+what modules or function calls to use when issuing a command.
+
+=cut
 
 {   my @acc = qw[ok error _fds];
     
@@ -149,7 +348,7 @@ sub run {
     $cmd = _quote_args_vms( $cmd ) if IS_VMS;
 
     ### strip any empty elements from $cmd if present
-    $cmd = [ grep { length && defined } @$cmd ] if ref $cmd;
+    $cmd = [ grep { defined && length } @$cmd ] if ref $cmd;
 
     my $pp_cmd = (ref $cmd ? "@$cmd" : $cmd);
     print loc("Running [%1]...\n", $pp_cmd ) if $verbose;
@@ -757,3 +956,184 @@ sub _pp_child_error {
 
 1;
 
+=head2 $q = QUOTE
+
+Returns the character used for quoting strings on this platform. This is
+usually a C<'> (single quote) on most systems, but some systems use different
+quotes. For example, C<Win32> uses C<"> (double quote). 
+
+You can use it as follows:
+
+  use IPC::Cmd qw[run QUOTE];
+  my $cmd = q[echo ] . QUOTE . q[foo bar] . QUOTE;
+
+This makes sure that C<foo bar> is treated as a string, rather than two
+seperate arguments to the C<echo> function.
+
+__END__
+
+=head1 HOW IT WORKS
+
+C<run> will try to execute your command using the following logic:
+
+=over 4
+
+=item *
+
+If you have C<IPC::Run> installed, and the variable C<$IPC::Cmd::USE_IPC_RUN>
+is set to true (See the C<GLOBAL VARIABLES> Section) use that to execute 
+the command. You will have the full output available in buffers, interactive commands are sure to work  and you are guaranteed to have your verbosity
+settings honored cleanly.
+
+=item *
+
+Otherwise, if the variable C<$IPC::Cmd::USE_IPC_OPEN3> is set to true 
+(See the C<GLOBAL VARIABLES> Section), try to execute the command using
+C<IPC::Open3>. Buffers will be available on all platforms except C<Win32>,
+interactive commands will still execute cleanly, and also your verbosity
+settings will be adhered to nicely;
+
+=item *
+
+Otherwise, if you have the verbose argument set to true, we fall back
+to a simple system() call. We cannot capture any buffers, but
+interactive commands will still work.
+
+=item *
+
+Otherwise we will try and temporarily redirect STDERR and STDOUT, do a
+system() call with your command and then re-open STDERR and STDOUT.
+This is the method of last resort and will still allow you to execute
+your commands cleanly. However, no buffers will be available.
+
+=back
+
+=head1 Global Variables
+
+The behaviour of IPC::Cmd can be altered by changing the following
+global variables:
+
+=head2 $IPC::Cmd::VERBOSE
+
+This controls whether IPC::Cmd will print any output from the
+commands to the screen or not. The default is 0;
+
+=head2 $IPC::Cmd::USE_IPC_RUN
+
+This variable controls whether IPC::Cmd will try to use L<IPC::Run>
+when available and suitable. Defaults to true if you are on C<Win32>.
+
+=head2 $IPC::Cmd::USE_IPC_OPEN3
+
+This variable controls whether IPC::Cmd will try to use L<IPC::Open3>
+when available and suitable. Defaults to true.
+
+=head2 $IPC::Cmd::WARN
+
+This variable controls whether run time warnings should be issued, like
+the failure to load an C<IPC::*> module you explicitly requested.
+
+Defaults to true. Turn this off at your own risk.
+
+=head1 Caveats
+
+=over 4
+
+=item Whitespace and IPC::Open3 / system()
+
+When using C<IPC::Open3> or C<system>, if you provide a string as the
+C<command> argument, it is assumed to be appropriately escaped. You can
+use the C<QUOTE> constant to use as a portable quote character (see above).
+However, if you provide and C<Array Reference>, special rules apply:
+
+If your command contains C<Special Characters> (< > | &), it will
+be internally stringified before executing the command, to avoid that these
+special characters are escaped and passed as arguments instead of retaining
+their special meaning.
+
+However, if the command contained arguments that contained whitespace, 
+stringifying the command would loose the significance of the whitespace.
+Therefor, C<IPC::Cmd> will quote any arguments containing whitespace in your
+command if the command is passed as an arrayref and contains special characters.
+
+=item Whitespace and IPC::Run
+
+When using C<IPC::Run>, if you provide a string as the C<command> argument, 
+the string will be split on whitespace to determine the individual elements 
+of your command. Although this will usually just Do What You Mean, it may
+break if you have files or commands with whitespace in them.
+
+If you do not wish this to happen, you should provide an array
+reference, where all parts of your command are already separated out.
+Note however, if there's extra or spurious whitespace in these parts,
+the parser or underlying code may not interpret it correctly, and
+cause an error.
+
+Example:
+The following code
+
+    gzip -cdf foo.tar.gz | tar -xf -
+
+should either be passed as
+
+    "gzip -cdf foo.tar.gz | tar -xf -"
+
+or as
+
+    ['gzip', '-cdf', 'foo.tar.gz', '|', 'tar', '-xf', '-']
+
+But take care not to pass it as, for example
+
+    ['gzip -cdf foo.tar.gz', '|', 'tar -xf -']
+
+Since this will lead to issues as described above.
+
+
+=item IO Redirect
+
+Currently it is too complicated to parse your command for IO
+Redirections. For capturing STDOUT or STDERR there is a work around
+however, since you can just inspect your buffers for the contents.
+
+=item Interleaving STDOUT/STDERR
+
+Neither IPC::Run nor IPC::Open3 can interleave STDOUT and STDERR. For short
+bursts of output from a program, ie this sample:
+
+    for ( 1..4 ) {
+        $_ % 2 ? print STDOUT $_ : print STDERR $_;
+    }
+
+IPC::[Run|Open3] will first read all of STDOUT, then all of STDERR, meaning 
+the output looks like 1 line on each, namely '13' on STDOUT and '24' on STDERR.
+
+It should have been 1, 2, 3, 4.
+
+This has been recorded in L<rt.cpan.org> as bug #37532: Unable to interleave
+STDOUT and STDERR
+
+=back
+
+=head1 See Also
+
+C<IPC::Run>, C<IPC::Open3>
+
+=head1 ACKNOWLEDGEMENTS
+
+Thanks to James Mastros and Martijn van der Streek for their
+help in getting IPC::Open3 to behave nicely.
+
+=head1 BUG REPORTS
+
+Please report bugs or other issues to E<lt>bug-ipc-cmd@rt.cpan.orgE<gt>.
+
+=head1 AUTHOR
+
+This module by Jos Boumans E<lt>kane@cpan.orgE<gt>.
+
+=head1 COPYRIGHT
+
+This library is free software; you may redistribute and/or modify it 
+under the same terms as Perl itself.
+
+=cut

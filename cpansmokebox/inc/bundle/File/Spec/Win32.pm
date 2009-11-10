@@ -16,12 +16,56 @@ my $UNC_RX = '(?:\\\\\\\\|//)[^\\\\/]+[\\\\/][^\\\\/]+';
 my $VOL_RX = "(?:$DRIVE_RX|$UNC_RX)";
 
 
+=head1 NAME
+
+File::Spec::Win32 - methods for Win32 file specs
+
+=head1 SYNOPSIS
+
+ require File::Spec::Win32; # Done internally by File::Spec if needed
+
+=head1 DESCRIPTION
+
+See File::Spec::Unix for a documentation of the methods provided
+there. This package overrides the implementation of these methods, not
+the semantics.
+
+=over 4
+
+=item devnull
+
+Returns a string representation of the null device.
+
+=cut
+
 sub devnull {
     return "nul";
 }
 
 sub rootdir { '\\' }
 
+
+=item tmpdir
+
+Returns a string representation of the first existing directory
+from the following list:
+
+    $ENV{TMPDIR}
+    $ENV{TEMP}
+    $ENV{TMP}
+    SYS:/temp
+    C:\system\temp
+    C:/temp
+    /tmp
+    /
+
+The SYS:/temp is preferred in Novell NetWare and the C:\system\temp
+for Symbian (the File::Spec::Win32 is used also for those platforms).
+
+Since Perl 5.8.0, if running under taint mode, and if the environment
+variables are tainted, they are not used.
+
+=cut
 
 my $tmpdir;
 sub tmpdir {
@@ -34,6 +78,16 @@ sub tmpdir {
 			      '/'  );
 }
 
+=item case_tolerant
+
+MSWin32 case-tolerance depends on GetVolumeInformation() $ouFsFlags == FS_CASE_SENSITIVE,
+indicating the case significance when comparing file specifications.
+Since XP FS_CASE_SENSITIVE is effectively disabled for the NT subsubsystem.
+See http://cygwin.com/ml/cygwin/2007-07/msg00891.html
+Default: 1
+
+=cut
+
 sub case_tolerant {
   eval { require Win32API::File; } or return 1;
   my $drive = shift || "C:";
@@ -44,6 +98,13 @@ sub case_tolerant {
   if ($ouFsFlags & Win32API::File::FS_CASE_SENSITIVE()) { return 0; }
   else { return 1; }
 }
+
+=item file_name_is_absolute
+
+As of right now, this returns 2 if the path is absolute with a
+volume, 1 if it's absolute with no volume, 0 otherwise.
+
+=cut
 
 sub file_name_is_absolute {
 
@@ -57,6 +118,13 @@ sub file_name_is_absolute {
     }
     return $file =~  m{^[\\/]} ? 1 : 0;
 }
+
+=item catfile
+
+Concatenate one or more directory names and a filename to form a
+complete path ending with a filename
+
+=cut
 
 sub catfile {
     shift;
@@ -100,12 +168,42 @@ sub path {
     return @path;
 }
 
+=item canonpath
+
+No physical check on the filesystem, but a logical cleanup of a
+path. On UNIX eliminated successive slashes and successive "/.".
+On Win32 makes 
+
+	dir1\dir2\dir3\..\..\dir4 -> \dir\dir4 and even
+	dir1\dir2\dir3\...\dir4   -> \dir\dir4
+
+=cut
+
 sub canonpath {
     # Legacy / compatibility support
     #
     return $_[1] if !defined($_[1]) or $_[1] eq '';
     return _canon_cat( $_[1] );
 }
+
+=item splitpath
+
+    ($volume,$directories,$file) = File::Spec->splitpath( $path );
+    ($volume,$directories,$file) = File::Spec->splitpath( $path, $no_file );
+
+Splits a path into volume, directory, and filename portions. Assumes that 
+the last file is a path unless the path ends in '\\', '\\.', '\\..'
+or $no_file is true.  On Win32 this means that $no_file true makes this return 
+( $volume, $path, '' ).
+
+Separators accepted are \ and /.
+
+Volumes can be drive letters or UNC sharenames (\\server\share).
+
+The results can be passed to L</catpath> to get back a path equivalent to
+(usually identical to) the original path.
+
+=cut
 
 sub splitpath {
     my ($self,$path, $nofile) = @_;
@@ -131,6 +229,28 @@ sub splitpath {
 }
 
 
+=item splitdir
+
+The opposite of L<catdir()|File::Spec/catdir()>.
+
+    @dirs = File::Spec->splitdir( $directories );
+
+$directories must be only the directory portion of the path on systems 
+that have the concept of a volume or that have path syntax that differentiates
+files from directories.
+
+Unlike just splitting the directories on the separator, leading empty and 
+trailing directory entries can be returned, because these are significant
+on some OSs. So,
+
+    File::Spec->splitdir( "/a/b/c" );
+
+Yields:
+
+    ( '', 'a', 'b', '', 'c', '' )
+
+=cut
+
 sub splitdir {
     my ($self,$directories) = @_ ;
     #
@@ -152,6 +272,14 @@ sub splitdir {
     }
 }
 
+
+=item catpath
+
+Takes volume, directory and file portions and returns an entire path. Under
+Unix, $volume is ignored, and this is just like catfile(). On other OSs,
+the $volume become significant.
+
+=cut
 
 sub catpath {
     my ($self,$volume,$directory,$file) = @_;
@@ -226,6 +354,26 @@ sub rel2abs {
 
     return $self->canonpath( $path ) ;
 }
+
+=back
+
+=head2 Note For File::Spec::Win32 Maintainers
+
+Novell NetWare inherits its File::Spec behaviour from File::Spec::Win32.
+
+=head1 COPYRIGHT
+
+Copyright (c) 2004,2007 by the Perl 5 Porters.  All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=head1 SEE ALSO
+
+See L<File::Spec> and L<File::Spec::Unix>.  This package overrides the
+implementation of these methods, not the semantics.
+
+=cut
 
 
 sub _canon_cat				# @path -> path

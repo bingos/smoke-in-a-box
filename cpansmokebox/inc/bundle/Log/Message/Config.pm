@@ -111,6 +111,84 @@ sub DESTROY { 1 }
 
 __END__
 
+=pod
+
+=head1 NAME
+
+Log::Message::Config - Configuration options for Log::Message
+
+=head1 SYNOPSIS
+
+    # This module is implicitly used by Log::Message to create a config
+    # which it uses to log messages.
+    # For the options you can pass, see the C<Log::Message new()> method.
+
+    # Below is a sample of a config file you could use
+
+    # comments are denoted by a single '#'
+    # use a shared stack, or have a private instance?
+    # if none provided, set to '0',
+    private = 1
+
+    # do not be verbose
+    verbose = 0
+
+    # default tag to set on new items
+    # if none provided, set to 'NONE'
+    tag = SOME TAG
+
+    # default level to handle items
+    # if none provided, set to 'log'
+    level = carp
+
+    # extra files to include
+    # if none provided, no files are auto included
+    include = mylib.pl
+    include = ../my/other/lib.pl
+
+    # automatically delete items
+    # when you retrieve them from the stack?
+    # if none provided, set to '0'
+    remove = 1
+
+    # retrieve errors in chronological order, or not?
+    # if none provided, set to '1'
+    chrono = 0
+
+=head1 DESCRIPTION
+
+Log::Message::Config provides a standardized config object for
+Log::Message objects.
+
+It can either read options as perl arguments, or as a config file.
+See the Log::Message manpage for more information about what arguments
+are valid, and see the Synopsis for an example config file you can use
+
+=head1 SEE ALSO
+
+L<Log::Message>, L<Log::Message::Item>, L<Log::Message::Handlers>
+
+=head1 AUTHOR
+
+This module by
+Jos Boumans E<lt>kane@cpan.orgE<gt>.
+
+=head1 Acknowledgements
+
+Thanks to Ann Barcomb for her suggestions.
+
+=head1 COPYRIGHT
+
+This module is
+copyright (c) 2002 Jos Boumans E<lt>kane@cpan.orgE<gt>.
+All rights reserved.
+
+This library is free software;
+you may redistribute and/or modify it under the same
+terms as Perl itself.
+
+=cut
+
 # Local variables:
 # c-indentation-style: bsd
 # c-basic-offset: 4

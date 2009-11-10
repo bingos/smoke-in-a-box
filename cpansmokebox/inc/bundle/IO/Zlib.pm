@@ -6,7 +6,282 @@
 
 package IO::Zlib;
 
-$VERSION = "1.09";
+$VERSION = "1.10";
+
+=head1 NAME
+
+IO::Zlib - IO:: style interface to L<Compress::Zlib>
+
+=head1 SYNOPSIS
+
+With any version of Perl 5 you can use the basic OO interface:
+
+    use IO::Zlib;
+
+    $fh = new IO::Zlib;
+    if ($fh->open("file.gz", "rb")) {
+        print <$fh>;
+        $fh->close;
+    }
+
+    $fh = IO::Zlib->new("file.gz", "wb9");
+    if (defined $fh) {
+        print $fh "bar\n";
+        $fh->close;
+    }
+
+    $fh = IO::Zlib->new("file.gz", "rb");
+    if (defined $fh) {
+        print <$fh>;
+        undef $fh;       # automatically closes the file
+    }
+
+With Perl 5.004 you can also use the TIEHANDLE interface to access
+compressed files just like ordinary files:
+
+    use IO::Zlib;
+
+    tie *FILE, 'IO::Zlib', "file.gz", "wb";
+    print FILE "line 1\nline2\n";
+
+    tie *FILE, 'IO::Zlib', "file.gz", "rb";
+    while (<FILE>) { print "LINE: ", $_ };
+
+=head1 DESCRIPTION
+
+C<IO::Zlib> provides an IO:: style interface to L<Compress::Zlib> and
+hence to gzip/zlib compressed files. It provides many of the same methods
+as the L<IO::Handle> interface.
+
+Starting from IO::Zlib version 1.02, IO::Zlib can also use an
+external F<gzip> command.  The default behaviour is to try to use
+an external F<gzip> if no C<Compress::Zlib> can be loaded, unless
+explicitly disabled by
+
+    use IO::Zlib qw(:gzip_external 0);
+
+If explicitly enabled by
+
+    use IO::Zlib qw(:gzip_external 1);
+
+then the external F<gzip> is used B<instead> of C<Compress::Zlib>.
+
+=head1 CONSTRUCTOR
+
+=over 4
+
+=item new ( [ARGS] )
+
+Creates an C<IO::Zlib> object. If it receives any parameters, they are
+passed to the method C<open>; if the open fails, the object is destroyed.
+Otherwise, it is returned to the caller.
+
+=back
+
+=head1 OBJECT METHODS
+
+=over 4
+
+=item open ( FILENAME, MODE )
+
+C<open> takes two arguments. The first is the name of the file to open
+and the second is the open mode. The mode can be anything acceptable to
+L<Compress::Zlib> and by extension anything acceptable to I<zlib> (that
+basically means POSIX fopen() style mode strings plus an optional number
+to indicate the compression level).
+
+=item opened
+
+Returns true if the object currently refers to a opened file.
+
+=item close
+
+Close the file associated with the object and disassociate
+the file from the handle.
+Done automatically on destroy.
+
+=item getc
+
+Return the next character from the file, or undef if none remain.
+
+=item getline
+
+Return the next line from the file, or undef on end of string.
+Can safely be called in an array context.
+Currently ignores $/ ($INPUT_RECORD_SEPARATOR or $RS when L<English>
+is in use) and treats lines as delimited by "\n".
+
+=item getlines
+
+Get all remaining lines from the file.
+It will croak() if accidentally called in a scalar context.
+
+=item print ( ARGS... )
+
+Print ARGS to the  file.
+
+=item read ( BUF, NBYTES, [OFFSET] )
+
+Read some bytes from the file.
+Returns the number of bytes actually read, 0 on end-of-file, undef on error.
+
+=item eof
+
+Returns true if the handle is currently positioned at end of file?
+
+=item seek ( OFFSET, WHENCE )
+
+Seek to a given position in the stream.
+Not yet supported.
+
+=item tell
+
+Return the current position in the stream, as a numeric offset.
+Not yet supported.
+
+=item setpos ( POS )
+
+Set the current position, using the opaque value returned by C<getpos()>.
+Not yet supported.
+
+=item getpos ( POS )
+
+Return the current position in the string, as an opaque object.
+Not yet supported.
+
+=back
+
+=head1 USING THE EXTERNAL GZIP
+
+If the external F<gzip> is used, the following C<open>s are used:
+
+    open(FH, "gzip -dc $filename |")  # for read opens
+    open(FH, " | gzip > $filename")   # for write opens
+
+You can modify the 'commands' for example to hardwire
+an absolute path by e.g.
+
+    use IO::Zlib ':gzip_read_open'  => '/some/where/gunzip -c %s |';
+    use IO::Zlib ':gzip_write_open' => '| /some/where/gzip.exe > %s';
+
+The C<%s> is expanded to be the filename (C<sprintf> is used, so be
+careful to escape any other C<%> signs).  The 'commands' are checked
+for sanity - they must contain the C<%s>, and the read open must end
+with the pipe sign, and the write open must begin with the pipe sign.
+
+=head1 CLASS METHODS
+
+=over 4
+
+=item has_Compress_Zlib
+
+Returns true if C<Compress::Zlib> is available.  Note that this does
+not mean that C<Compress::Zlib> is being used: see L</gzip_external>
+and L<gzip_used>.
+
+=item gzip_external
+
+Undef if an external F<gzip> B<can> be used if C<Compress::Zlib> is
+not available (see L</has_Compress_Zlib>), true if an external F<gzip>
+is explicitly used, false if an external F<gzip> must not be used.
+See L</gzip_used>.
+
+=item gzip_used
+
+True if an external F<gzip> is being used, false if not.
+
+=item gzip_read_open
+
+Return the 'command' being used for opening a file for reading using an
+external F<gzip>.
+
+=item gzip_write_open
+
+Return the 'command' being used for opening a file for writing using an
+external F<gzip>.
+
+=back
+
+=head1 DIAGNOSTICS
+
+=over 4
+
+=item IO::Zlib::getlines: must be called in list context
+
+If you want read lines, you must read in list context.
+
+=item IO::Zlib::gzopen_external: mode '...' is illegal
+
+Use only modes 'rb' or 'wb' or /wb[1-9]/.
+
+=item IO::Zlib::import: '...' is illegal
+
+The known import symbols are the C<:gzip_external>, C<:gzip_read_open>,
+and C<:gzip_write_open>.  Anything else is not recognized.
+
+=item IO::Zlib::import: ':gzip_external' requires an argument
+
+The C<:gzip_external> requires one boolean argument.
+
+=item IO::Zlib::import: 'gzip_read_open' requires an argument
+
+The C<:gzip_external> requires one string argument.
+
+=item IO::Zlib::import: 'gzip_read' '...' is illegal
+
+The C<:gzip_read_open> argument must end with the pipe sign (|)
+and have the C<%s> for the filename.  See L</"USING THE EXTERNAL GZIP">.
+
+=item IO::Zlib::import: 'gzip_write_open' requires an argument
+
+The C<:gzip_external> requires one string argument.
+
+=item IO::Zlib::import: 'gzip_write_open' '...' is illegal
+
+The C<:gzip_write_open> argument must begin with the pipe sign (|)
+and have the C<%s> for the filename.  An output redirect (>) is also
+often a good idea, depending on your operating system shell syntax.
+See L</"USING THE EXTERNAL GZIP">.
+
+=item IO::Zlib::import: no Compress::Zlib and no external gzip
+
+Given that we failed to load C<Compress::Zlib> and that the use of
+ an external F<gzip> was disabled, IO::Zlib has not much chance of working.
+
+=item IO::Zlib::open: needs a filename
+
+No filename, no open.
+
+=item IO::Zlib::READ: NBYTES must be specified
+
+We must know how much to read.
+
+=item IO::Zlib::WRITE: too long LENGTH
+
+The LENGTH must be less than or equal to the buffer size.
+
+=back
+
+=head1 SEE ALSO
+
+L<perlfunc>,
+L<perlop/"I/O Operators">,
+L<IO::Handle>,
+L<Compress::Zlib>
+
+=head1 HISTORY
+
+Created by Tom Hughes E<lt>F<tom@compton.nu>E<gt>.
+
+Support for external gzip added by Jarkko Hietaniemi E<lt>F<jhi@iki.fi>E<gt>.
+
+=head1 COPYRIGHT
+
+Copyright (c) 1998-2004 Tom Hughes E<lt>F<tom@compton.nu>E<gt>.
+All rights reserved. This program is free software; you can redistribute
+it and/or modify it under the same terms as Perl itself.
+
+=cut
 
 require 5.006;
 
@@ -25,7 +300,7 @@ sub has_Compress_Zlib {
 
 BEGIN {
     eval { require Compress::Zlib };
-    $has_Compress_Zlib = $@ ? 0 : 1;
+    $has_Compress_Zlib = $@ || $Compress::Zlib::VERSION < 2.000 ? 0 : 1;
 }
 
 use Symbol;

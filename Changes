@@ -1,6 +1,9 @@
 Changelog for Smoke-In-A-Box
 ============================
 
+0.18  Tue Nov 10 12:23:36 GMT 2009
+  - Updated bundled CPANPLUS to 0.89_07
+
 0.16  Mon Jul 27 11:29:47 BST 2009
   - cpconf wasn't actually setting cpantest, fixed.
 

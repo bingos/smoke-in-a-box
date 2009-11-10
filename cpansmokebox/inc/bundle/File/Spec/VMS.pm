@@ -12,6 +12,53 @@ $VERSION = eval $VERSION;
 use File::Basename;
 use VMS::Filespec;
 
+=head1 NAME
+
+File::Spec::VMS - methods for VMS file specs
+
+=head1 SYNOPSIS
+
+ require File::Spec::VMS; # Done internally by File::Spec if needed
+
+=head1 DESCRIPTION
+
+See File::Spec::Unix for a documentation of the methods provided
+there. This package overrides the implementation of these methods, not
+the semantics.
+
+The mode of operation of these routines depend on the VMS features that
+are controlled by the DECC features C<DECC$FILENAME_REPORT_UNIX> and
+C<DECC$EFS_CHARSET>.
+
+Perl needs to be at least at 5.10 for these feature settings to work.
+Use of them on older perl versions on VMS will result in unpredictable
+operations.
+
+The default and traditional mode of these routines have been to expect VMS
+syntax on input and to return VMS syntax on output, even when Unix syntax was
+given on input.
+
+The default and traditional mode is also incompatible with the VMS
+C<EFS>, Extended File system character set, and with running Perl scripts
+under <GNV>, Gnu is not VMS, an optional Unix like runtime environment on VMS.
+
+If the C<DECC$EFS_CHARSET> feature is enabled, These routines will now accept
+either VMS or UNIX syntax.  If the input parameters are clearly VMS syntax,
+the return value will be in VMS syntax.  If the input parameters are clearly
+in Unix syntax, the output will be in Unix syntax.
+
+This corresponds to the way that the VMS C library routines have always
+handled filenames, and what a programmer who has not specifically read this
+pod before would also expect.
+
+If the C<DECC$FILENAME_REPORT_UNIX> feature is enabled, then if the output
+syntax can not be determined from the input syntax, the output syntax will be
+UNIX.  If the feature is not enabled, VMS output will be the default.
+
+=over 4
+
+=cut
+
 # Need to look up the feature settings.  The preferred way is to use the
 # VMS::Feature module, but that may not be available to dual life modules.
 
@@ -47,6 +94,13 @@ sub _efs {
     }
     return $efs;
 }
+
+=item canonpath (override)
+
+Removes redundant portions of file specifications according to the syntax
+detected.
+
+=cut
 
 
 sub canonpath {
@@ -103,6 +157,14 @@ sub canonpath {
 	return $path;
     }
 }
+
+=item catdir (override)
+
+Concatenates a list of file specifications, and returns the result as a
+directory specification.  No check is made for "impossible"
+cases (e.g. elements other than the first being absolute filespecs).
+
+=cut
 
 sub catdir {
     my $self = shift;
@@ -278,6 +340,13 @@ sub catdir {
     return $self->canonpath($rslt);
 }
 
+=item catfile (override)
+
+Concatenates a list of directory specifications with a filename specification
+to build a path.
+
+=cut
+
 sub catfile {
     my $self = shift;
     my $tfile = pop();
@@ -425,17 +494,36 @@ sub catfile {
 }
 
 
+=item curdir (override)
+
+Returns a string representation of the current directory: '[]' or '.'
+
+=cut
+
 sub curdir {
     my $self = shift @_;
     return '.' if ($self->_unix_rpt);
     return '[]';
 }
 
+=item devnull (override)
+
+Returns a string representation of the null device: '_NLA0:' or '/dev/null'
+
+=cut
+
 sub devnull {
     my $self = shift @_;
     return '/dev/null' if ($self->_unix_rpt);
     return "_NLA0:";
 }
+
+=item rootdir (override)
+
+Returns a string representation of the root directory: 'SYS$DISK:[000000]'
+or '/'
+
+=cut
 
 sub rootdir {
     my $self = shift @_;
@@ -455,6 +543,20 @@ sub rootdir {
     return 'SYS$DISK:[000000]';
 }
 
+=item tmpdir (override)
+
+Returns a string representation of the first writable directory
+from the following list or '' if none are writable:
+
+    /tmp if C<DECC$FILENAME_REPORT_UNIX> is enabled.
+    sys$scratch:
+    $ENV{TMPDIR}
+
+Since perl 5.8.0, if running under taint mode, and if $ENV{TMPDIR}
+is tainted, it is not used.
+
+=cut
+
 my $tmpdir;
 sub tmpdir {
     my $self = shift @_;
@@ -467,21 +569,46 @@ sub tmpdir {
     $tmpdir = $self->_tmpdir( 'sys$scratch:', $ENV{TMPDIR} );
 }
 
+=item updir (override)
+
+Returns a string representation of the parent directory: '[-]' or '..'
+
+=cut
+
 sub updir {
     my $self = shift @_;
     return '..' if ($self->_unix_rpt);
     return '[-]';
 }
 
+=item case_tolerant (override)
+
+VMS file specification syntax is case-tolerant.
+
+=cut
+
 sub case_tolerant {
     return 1;
 }
+
+=item path (override)
+
+Translate logical name DCL$PATH as a searchlist, rather than trying
+to C<split> string value of C<$ENV{'PATH'}>.
+
+=cut
 
 sub path {
     my (@dirs,$dir,$i);
     while ($dir = $ENV{'DCL$PATH;' . $i++}) { push(@dirs,$dir); }
     return @dirs;
 }
+
+=item file_name_is_absolute (override)
+
+Checks for VMS directory spec as well as Unix separators.
+
+=cut
 
 sub file_name_is_absolute {
     my ($self,$file) = @_;
@@ -491,6 +618,18 @@ sub file_name_is_absolute {
 		  $file =~ m![<\[][^.\-\]>]!  ||
 		  $file =~ /:[^<\[]/);
 }
+
+=item splitpath (override)
+
+    ($volume,$directories,$file) = File::Spec->splitpath( $path );
+    ($volume,$directories,$file) = File::Spec->splitpath( $path, $no_file );
+
+Passing a true value for C<$no_file> indicates that the path being
+split only contains directory components, even on systems where you
+can usually (when not supporting a foreign syntax) tell the difference
+between directories and files at a glance.
+
+=cut
 
 sub splitpath {
     my($self,$path, $nofile) = @_;
@@ -522,6 +661,12 @@ sub splitpath {
         return ($1 || '',$2 || '',$3);
     }
 }
+
+=item splitdir (override)
+
+Split a directory specification into the components.
+
+=cut
 
 sub splitdir {
     my($self,$dirspec) = @_;
@@ -561,6 +706,12 @@ sub splitdir {
     @dirs;
 }
 
+
+=item catpath (override)
+
+Construct a complete filespec.
+
+=cut
 
 sub catpath {
     my($self,$dev,$dir,$file) = @_;
@@ -610,6 +761,13 @@ sub catpath {
     }
     "$dev$dir$file";
 }
+
+=item abs2rel (override)
+
+Attempt to convert a file specification to a relative specification.
+On a system with volumes, like VMS, this may not be possible.
+
+=cut
 
 sub abs2rel {
     my $self = shift;
@@ -744,6 +902,12 @@ sub abs2rel {
     return $self->canonpath( $self->catpath( '', $path_directories, $path_file ) ) ;
 }
 
+
+=item rel2abs (override)
+
+Return an absolute file specification from a relative one.
+
+=cut
 
 sub rel2abs {
     my $self = shift ;
@@ -978,5 +1142,24 @@ sub fixpath {
     $fixedpath;
 }
 
+
+=back
+
+=head1 COPYRIGHT
+
+Copyright (c) 2004 by the Perl 5 Porters.  All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=head1 SEE ALSO
+
+See L<File::Spec> and L<File::Spec::Unix>.  This package overrides the
+implementation of these methods, not the semantics.
+
+An explanation of VMS file specs can be found at
+L<"http://h71000.www7.hp.com/doc/731FINAL/4506/4506pro_014.html#apps_locating_naming_files">.
+
+=cut
 
 1;
