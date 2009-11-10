@@ -40,8 +40,6 @@ Included are:
 
   CPANPLUS::YACSmoke
 
-  YAML::Tiny
-
   Test::Reporter
 
   Sort::Versions

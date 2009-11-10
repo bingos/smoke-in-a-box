@@ -63,7 +63,6 @@ cpansmokebox/inc/bundle/version.pm
 cpansmokebox/inc/bundle/version.pod
 cpansmokebox/inc/bundle/version/typemap
 cpansmokebox/inc/bundle/version/vpp.pm
-cpansmokebox/inc/bundle/YAML/Tiny.pm
 cpansmokebox/lib/CPANPLUS.pm
 cpansmokebox/lib/CPANPLUS/Backend.pm
 cpansmokebox/lib/CPANPLUS/Backend/RV.pm
