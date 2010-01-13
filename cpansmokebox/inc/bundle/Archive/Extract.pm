@@ -2,7 +2,7 @@ package Archive::Extract;
 
 use strict;
 
-use Cwd                         qw[cwd];
+use Cwd                         qw[cwd chdir];
 use Carp                        qw[carp];
 use IPC::Cmd                    qw[run can_run];
 use FileHandle;
@@ -41,7 +41,7 @@ use vars qw[$VERSION $PREFER_BIN $PROGRAMS $WARN $DEBUG
             $_ALLOW_BIN $_ALLOW_PURE_PERL $_ALLOW_TAR_ITER
          ];
 
-$VERSION            = '0.34';
+$VERSION            = '0.38';
 $PREFER_BIN         = 0;
 $WARN               = 1;
 $DEBUG              = 0;
@@ -53,6 +53,67 @@ $_ALLOW_TAR_ITER        = 1;    # try to use Archive::Tar->iter if available
 my @Types           = ( TGZ, TAR, GZ, ZIP, BZ2, TBZ, Z, LZMA ); 
 
 local $Params::Check::VERBOSE = $Params::Check::VERBOSE = 1;
+
+=pod
+
+=head1 NAME
+
+Archive::Extract - A generic archive extracting mechanism
+
+=head1 SYNOPSIS
+
+    use Archive::Extract;
+
+    ### build an Archive::Extract object ###
+    my $ae = Archive::Extract->new( archive => 'foo.tgz' );
+
+    ### extract to cwd() ###
+    my $ok = $ae->extract;
+
+    ### extract to /tmp ###
+    my $ok = $ae->extract( to => '/tmp' );
+
+    ### what if something went wrong?
+    my $ok = $ae->extract or die $ae->error;
+
+    ### files from the archive ###
+    my $files   = $ae->files;
+
+    ### dir that was extracted to ###
+    my $outdir  = $ae->extract_path;
+
+
+    ### quick check methods ###
+    $ae->is_tar     # is it a .tar file?
+    $ae->is_tgz     # is it a .tar.gz or .tgz file?
+    $ae->is_gz;     # is it a .gz file?
+    $ae->is_zip;    # is it a .zip file?
+    $ae->is_bz2;    # is it a .bz2 file?
+    $ae->is_tbz;    # is it a .tar.bz2 or .tbz file?
+    $ae->is_lzma;   # is it a .lzma file?
+
+    ### absolute path to the archive you provided ###
+    $ae->archive;
+
+    ### commandline tools, if found ###
+    $ae->bin_tar     # path to /bin/tar, if found
+    $ae->bin_gzip    # path to /bin/gzip, if found
+    $ae->bin_unzip   # path to /bin/unzip, if found
+    $ae->bin_bunzip2 # path to /bin/bunzip2 if found
+    $ae->bin_unlzma  # path to /bin/unlzma if found
+
+=head1 DESCRIPTION
+
+Archive::Extract is a generic archive extraction mechanism.
+
+It allows you to extract any archive file of the type .tar, .tar.gz,
+.gz, .Z, tar.bz2, .tbz, .bz2, .zip or .lzma without having to worry how it 
+does so, or use different interfaces for each type by using either 
+perl modules, or commandline tools on your system.
+
+See the C<HOW IT WORKS> section further down for details.
+
+=cut
 
 
 ### see what /bin/programs are available ###
@@ -95,6 +156,65 @@ my $Mapping = {  # binary program           # pure perl module
                     }
     }
 
+=head1 METHODS
+
+=head2 $ae = Archive::Extract->new(archive => '/path/to/archive',[type => TYPE])
+
+Creates a new C<Archive::Extract> object based on the archive file you
+passed it. Automatically determines the type of archive based on the
+extension, but you can override that by explicitly providing the
+C<type> argument.
+
+Valid values for C<type> are:
+
+=over 4
+
+=item tar
+
+Standard tar files, as produced by, for example, C</bin/tar>.
+Corresponds to a C<.tar> suffix.
+
+=item tgz
+
+Gzip compressed tar files, as produced by, for example C</bin/tar -z>.
+Corresponds to a C<.tgz> or C<.tar.gz> suffix.
+
+=item gz
+
+Gzip compressed file, as produced by, for example C</bin/gzip>.
+Corresponds to a C<.gz> suffix.
+
+=item Z
+
+Lempel-Ziv compressed file, as produced by, for example C</bin/compress>.
+Corresponds to a C<.Z> suffix.
+
+=item zip
+
+Zip compressed file, as produced by, for example C</bin/zip>.
+Corresponds to a C<.zip>, C<.jar> or C<.par> suffix.
+
+=item bz2
+
+Bzip2 compressed file, as produced by, for example, C</bin/bzip2>.
+Corresponds to a C<.bz2> suffix.
+
+=item tbz
+
+Bzip2 compressed tar file, as produced by, for exmample C</bin/tar -j>.
+Corresponds to a C<.tbz> or C<.tar.bz2> suffix.
+
+=item lzma
+
+Lzma compressed file, as produced by C</bin/lzma>.
+Corresponds to a C<.lzma> suffix.
+
+=back
+
+Returns a C<Archive::Extract> object on success, or false on failure.
+
+=cut
+
     ### constructor ###
     sub new {
         my $class   = shift;
@@ -133,6 +253,50 @@ my $Mapping = {  # binary program           # pure perl module
         return $parsed;
     }
 }
+
+=head2 $ae->extract( [to => '/output/path'] )
+
+Extracts the archive represented by the C<Archive::Extract> object to
+the path of your choice as specified by the C<to> argument. Defaults to
+C<cwd()>.
+
+Since C<.gz> files never hold a directory, but only a single file; if 
+the C<to> argument is an existing directory, the file is extracted 
+there, with its C<.gz> suffix stripped. 
+If the C<to> argument is not an existing directory, the C<to> argument 
+is understood to be a filename, if the archive type is C<gz>. 
+In the case that you did not specify a C<to> argument, the output
+file will be the name of the archive file, stripped from its C<.gz>
+suffix, in the current working directory.
+
+C<extract> will try a pure perl solution first, and then fall back to
+commandline tools if they are available. See the C<GLOBAL VARIABLES>
+section below on how to alter this behaviour.
+
+It will return true on success, and false on failure.
+
+On success, it will also set the follow attributes in the object:
+
+=over 4
+
+=item $ae->extract_path
+
+This is the directory that the files where extracted to.
+
+=item $ae->files
+
+This is an array ref with the paths of all the files in the archive,
+relative to the C<to> argument you specified.
+To get the full path to an extracted file, you would use:
+
+    File::Spec->catfile( $to, $ae->files->[0] );
+
+Note that all files from a tar archive will be in unix format, as per
+the tar specification.
+
+=back
+
+=cut
 
 sub extract {
     my $self = shift;
@@ -258,7 +422,76 @@ sub extract {
     return $ok;
 }
 
+=pod
+
+=head1 ACCESSORS
+
+=head2 $ae->error([BOOL])
+
+Returns the last encountered error as string.
+Pass it a true value to get the C<Carp::longmess()> output instead.
+
+=head2 $ae->extract_path
+
+This is the directory the archive got extracted to.
+See C<extract()> for details.
+
+=head2 $ae->files
+
+This is an array ref holding all the paths from the archive.
+See C<extract()> for details.
+
+=head2 $ae->archive
+
+This is the full path to the archive file represented by this
+C<Archive::Extract> object.
+
+=head2 $ae->type
+
+This is the type of archive represented by this C<Archive::Extract>
+object. See accessors below for an easier way to use this.
+See the C<new()> method for details.
+
+=head2 $ae->types
+
+Returns a list of all known C<types> for C<Archive::Extract>'s
+C<new> method.
+
+=cut
+
 sub types { return @Types }
+
+=head2 $ae->is_tgz
+
+Returns true if the file is of type C<.tar.gz>.
+See the C<new()> method for details.
+
+=head2 $ae->is_tar
+
+Returns true if the file is of type C<.tar>.
+See the C<new()> method for details.
+
+=head2 $ae->is_gz
+
+Returns true if the file is of type C<.gz>.
+See the C<new()> method for details.
+
+=head2 $ae->is_Z
+
+Returns true if the file is of type C<.Z>.
+See the C<new()> method for details.
+
+=head2 $ae->is_zip
+
+Returns true if the file is of type C<.zip>.
+See the C<new()> method for details.
+
+=head2 $ae->is_lzma
+
+Returns true if the file is of type C<.lzma>.
+See the C<new()> method for details.
+
+=cut
 
 ### quick check methods ###
 sub is_tgz  { return $_[0]->type eq TGZ }
@@ -270,6 +503,26 @@ sub is_bz2  { return $_[0]->type eq BZ2 }
 sub is_Z    { return $_[0]->type eq Z   }
 sub is_lzma { return $_[0]->type eq LZMA }
 
+=pod
+
+=head2 $ae->bin_tar
+
+Returns the full path to your tar binary, if found.
+
+=head2 $ae->bin_gzip
+
+Returns the full path to your gzip binary, if found
+
+=head2 $ae->bin_unzip
+
+Returns the full path to your unzip binary, if found
+
+=head2 $ae->bin_unlzma
+
+Returns the full path to your unlzma binary, if found
+
+=cut
+
 ### paths to commandline tools ###
 sub bin_gzip        { return $PROGRAMS->{'gzip'}    if $PROGRAMS->{'gzip'}  }
 sub bin_unzip       { return $PROGRAMS->{'unzip'}   if $PROGRAMS->{'unzip'} }
@@ -278,6 +531,15 @@ sub bin_bunzip2     { return $PROGRAMS->{'bunzip2'} if $PROGRAMS->{'bunzip2'} }
 sub bin_uncompress  { return $PROGRAMS->{'uncompress'} 
                                                  if $PROGRAMS->{'uncompress'} }
 sub bin_unlzma      { return $PROGRAMS->{'unlzma'}  if $PROGRAMS->{'unlzma'} }
+
+=head2 $bool = $ae->have_old_bunzip2
+
+Older versions of C</bin/bunzip2>, from before the C<bunzip2 1.0> release,
+require all archive names to end in C<.bz2> or it will not extract
+them. This method checks if you have a recent version of C<bunzip2>
+that allows any extension, or an older one that doesn't.
+
+=cut
 
 sub have_old_bunzip2 {
     my $self = shift;
@@ -637,7 +899,7 @@ sub _gunzip_bin {
         $self->_error( $self->_no_buffer_content( $self->archive ) );
     }
 
-    print $fh $buffer if defined $buffer;
+    $self->_print($fh, $buffer) if defined $buffer;
 
     close $fh;
 
@@ -667,7 +929,7 @@ sub _gunzip_cz {
                             $self->_gunzip_to, $! ));
 
     my $buffer;
-    $fh->print($buffer) while $gz->gzread($buffer) > 0;
+    $self->_print($fh, $buffer) while $gz->gzread($buffer) > 0;
     $fh->close;
 
     ### set what files where extract, and where they went ###
@@ -712,7 +974,7 @@ sub _uncompress_bin {
         $self->_error( $self->_no_buffer_content( $self->archive ) );
     }
 
-    print $fh $buffer if defined $buffer;
+    $self->_print($fh, $buffer) if defined $buffer;
 
     close $fh;
 
@@ -928,7 +1190,7 @@ sub _bunzip2_bin {
         $self->_error( $self->_no_buffer_content( $self->archive ) );
     }
     
-    print $fh $buffer if defined $buffer;
+    $self->_print($fh, $buffer) if defined $buffer;
 
     close $fh;
 
@@ -1030,7 +1292,7 @@ sub _unlzma_bin {
         $self->_error( $self->_no_buffer_content( $self->archive ) );
     }
 
-    print $fh $buffer if defined $buffer;
+    $self->_print($fh, $buffer) if defined $buffer;
 
     close $fh;
 
@@ -1062,7 +1324,7 @@ sub _unlzma_cz {
                                     $self->archive, $@));
     }
 
-    print $fh $buffer if defined $buffer;
+    $self->_print($fh, $buffer) if defined $buffer;
 
     close $fh;
 
@@ -1078,6 +1340,15 @@ sub _unlzma_cz {
 # Error code
 #
 #################################
+
+# For printing binaries that avoids interfering globals
+sub _print {
+    my $self = shift;
+    my $fh = shift;
+
+    local( $\, $", $, ) = ( undef, ' ', '' );
+    return print $fh @_;
+}
 
 sub _error {
     my $self    = shift;
@@ -1122,6 +1393,114 @@ sub _no_buffer_content {
     return loc("No buffer captured, unable to get content for '%1'", $file);
 }
 1;
+
+=pod
+
+=head1 HOW IT WORKS
+
+C<Archive::Extract> tries first to determine what type of archive you
+are passing it, by inspecting its suffix. It does not do this by using
+Mime magic, or something related. See C<CAVEATS> below.
+
+Once it has determined the file type, it knows which extraction methods
+it can use on the archive. It will try a perl solution first, then fall
+back to a commandline tool if that fails. If that also fails, it will
+return false, indicating it was unable to extract the archive.
+See the section on C<GLOBAL VARIABLES> to see how to alter this order.
+
+=head1 CAVEATS
+
+=head2 File Extensions
+
+C<Archive::Extract> trusts on the extension of the archive to determine
+what type it is, and what extractor methods therefore can be used. If
+your archives do not have any of the extensions as described in the
+C<new()> method, you will have to specify the type explicitly, or
+C<Archive::Extract> will not be able to extract the archive for you.
+
+=head2 Supporting Very Large Files
+
+C<Archive::Extract> can use either pure perl modules or command line
+programs under the hood. Some of the pure perl modules (like 
+C<Archive::Tar> and Compress::unLZMA) take the entire contents of the archive into memory,
+which may not be feasible on your system. Consider setting the global
+variable C<$Archive::Extract::PREFER_BIN> to C<1>, which will prefer
+the use of command line programs and won't consume so much memory.
+
+See the C<GLOBAL VARIABLES> section below for details.
+
+=head2 Bunzip2 support of arbitrary extensions.
+
+Older versions of C</bin/bunzip2> do not support arbitrary file 
+extensions and insist on a C<.bz2> suffix. Although we do our best
+to guard against this, if you experience a bunzip2 error, it may
+be related to this. For details, please see the C<have_old_bunzip2>
+method.
+
+=head1 GLOBAL VARIABLES
+
+=head2 $Archive::Extract::DEBUG
+
+Set this variable to C<true> to have all calls to command line tools
+be printed out, including all their output.
+This also enables C<Carp::longmess> errors, instead of the regular
+C<carp> errors.
+
+Good for tracking down why things don't work with your particular
+setup.
+
+Defaults to C<false>.
+
+=head2 $Archive::Extract::WARN
+
+This variable controls whether errors encountered internally by
+C<Archive::Extract> should be C<carp>'d or not.
+
+Set to false to silence warnings. Inspect the output of the C<error()>
+method manually to see what went wrong.
+
+Defaults to C<true>.
+
+=head2 $Archive::Extract::PREFER_BIN
+
+This variables controls whether C<Archive::Extract> should prefer the
+use of perl modules, or commandline tools to extract archives.
+
+Set to C<true> to have C<Archive::Extract> prefer commandline tools.
+
+Defaults to C<false>.
+
+=head1 TODO / CAVEATS
+
+=over 4
+
+=item Mime magic support
+
+Maybe this module should use something like C<File::Type> to determine
+the type, rather than blindly trust the suffix.
+
+=item Thread safety
+
+Currently, C<Archive::Extract> does a C<chdir> to the extraction dir before
+extraction, and a C<chdir> back again after. This is not necessarily 
+thread safe. See C<rt.cpan.org> bug C<#45671> for details.
+
+=back
+
+=head1 BUG REPORTS
+
+Please report bugs or other issues to E<lt>bug-archive-extract@rt.cpan.org<gt>.
+
+=head1 AUTHOR
+
+This module by Jos Boumans E<lt>kane@cpan.orgE<gt>.
+
+=head1 COPYRIGHT
+
+This library is free software; you may redistribute and/or modify it 
+under the same terms as Perl itself.
+
+=cut
 
 # Local variables:
 # c-indentation-style: bsd

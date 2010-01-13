@@ -22,7 +22,7 @@ use vars    qw[ $VERBOSE $PREFER_BIN $FROM_EMAIL $USER_AGENT
                 $FTP_PASSIVE $TIMEOUT $DEBUG $WARN
             ];
 
-$VERSION        = '0.20';
+$VERSION        = '0.24';
 $VERSION        = eval $VERSION;    # avoid warnings with development releases
 $PREFER_BIN     = 0;                # XXX TODO implement
 $FROM_EMAIL     = 'File-Fetch@example.com';
@@ -36,7 +36,7 @@ $WARN           = 1;
 
 ### methods available to fetch the file depending on the scheme
 $METHODS = {
-    http    => [ qw|lwp wget curl lftp lynx| ],
+    http    => [ qw|lwp wget curl lftp lynx iosock| ],
     ftp     => [ qw|lwp netftp wget curl lftp ncftp ftp| ],
     file    => [ qw|lwp lftp file| ],
     rsync   => [ qw|rsync| ]
@@ -55,6 +55,91 @@ use constant ON_UNIX    => (!ON_WIN);
 use constant HAS_VOL    => (ON_WIN);
 use constant HAS_SHARE  => (ON_WIN);
 
+
+=pod
+
+=head1 NAME
+
+File::Fetch - A generic file fetching mechanism
+
+=head1 SYNOPSIS
+
+    use File::Fetch;
+
+    ### build a File::Fetch object ###
+    my $ff = File::Fetch->new(uri => 'http://some.where.com/dir/a.txt');
+
+    ### fetch the uri to cwd() ###
+    my $where = $ff->fetch() or die $ff->error;
+
+    ### fetch the uri to /tmp ###
+    my $where = $ff->fetch( to => '/tmp' );
+
+    ### parsed bits from the uri ###
+    $ff->uri;
+    $ff->scheme;
+    $ff->host;
+    $ff->path;
+    $ff->file;
+
+=head1 DESCRIPTION
+
+File::Fetch is a generic file fetching mechanism.
+
+It allows you to fetch any file pointed to by a C<ftp>, C<http>,
+C<file>, or C<rsync> uri by a number of different means.
+
+See the C<HOW IT WORKS> section further down for details.
+
+=head1 ACCESSORS
+
+A C<File::Fetch> object has the following accessors
+
+=over 4
+
+=item $ff->uri
+
+The uri you passed to the constructor
+
+=item $ff->scheme
+
+The scheme from the uri (like 'file', 'http', etc)
+
+=item $ff->host
+
+The hostname in the uri.  Will be empty if host was originally 
+'localhost' for a 'file://' url.
+
+=item $ff->vol
+
+On operating systems with the concept of a volume the second element
+of a file:// is considered to the be volume specification for the file.
+Thus on Win32 this routine returns the volume, on other operating
+systems this returns nothing.
+
+On Windows this value may be empty if the uri is to a network share, in 
+which case the 'share' property will be defined. Additionally, volume 
+specifications that use '|' as ':' will be converted on read to use ':'.
+
+On VMS, which has a volume concept, this field will be empty because VMS
+file specifications are converted to absolute UNIX format and the volume
+information is transparently included.
+
+=item $ff->share
+
+On systems with the concept of a network share (currently only Windows) returns 
+the sharename from a file://// url.  On other operating systems returns empty.
+
+=item $ff->path
+
+The path from the uri, will be at least a single '/'.
+
+=item $ff->file
+
+The name of the remote file. For the local file name, the
+result of $ff->output_file will be used. 
+
+=cut
 
 
 ##########################
@@ -93,19 +178,33 @@ use constant HAS_SHARE  => (ON_WIN);
         bless $args, $class;
     
         if( lc($args->scheme) ne 'file' and not $args->host ) {
-            return File::Fetch->_error(loc(
+            return $class->_error(loc(
                 "Hostname required when fetching from '%1'",$args->scheme));
         }
         
         for (qw[path file]) {
             unless( $args->$_() ) { # 5.5.x needs the ()
-                return File::Fetch->_error(loc("No '%1' specified",$_));
+                return $class->_error(loc("No '%1' specified",$_));
             }
         }
         
         return $args;
     }    
 }
+
+=item $ff->output_file
+
+The name of the output file. This is the same as $ff->file,
+but any query parameters are stripped off. For example:
+
+    http://example.com/index.html?x=y
+
+would make the output file be C<index.html> rather than 
+C<index.html?x=y>.
+
+=back
+
+=cut
 
 sub output_file {
     my $self = shift;
@@ -153,6 +252,17 @@ sub output_file {
 #     
 # }
 
+=head1 METHODS
+
+=head2 $ff = File::Fetch->new( uri => 'http://some.where.com/dir/file.txt' );
+
+Parses the uri and creates a corresponding File::Fetch::Item object,
+that is ready to be C<fetch>ed and returns it.
+
+Returns false on failure.
+
+=cut
+
 sub new {
     my $class = shift;
     my %hash  = @_;
@@ -165,10 +275,10 @@ sub new {
     check( $tmpl, \%hash ) or return;
 
     ### parse the uri to usable parts ###
-    my $href    = __PACKAGE__->_parse_uri( $uri ) or return;
+    my $href    = $class->_parse_uri( $uri ) or return;
 
     ### make it into a FFI object ###
-    my $ff      = File::Fetch->_create( %$href ) or return;
+    my $ff      = $class->_create( %$href ) or return;
 
 
     ### return the object ###
@@ -287,6 +397,25 @@ sub _parse_uri {
 
     return $href;
 }
+
+=head2 $where = $ff->fetch( [to => /my/output/dir/ | \$scalar] )
+
+Fetches the file you requested and returns the full path to the file.
+
+By default it writes to C<cwd()>, but you can override that by specifying 
+the C<to> argument:
+
+    ### file fetch to /tmp, full path to the file in $where
+    $where = $ff->fetch( to => '/tmp' );
+
+    ### file slurped into $scalar, full path to the file in $where
+    ### file is downloaded to a temp directory and cleaned up at exit time
+    $where = $ff->fetch( to => \$scalar );
+
+Returns the full path to the downloaded file on success, and false
+on failure.
+
+=cut
 
 sub fetch {
     my $self = shift or return;
@@ -451,6 +580,86 @@ sub _lwp_fetch {
 
     } else {
         $METHOD_FAIL->{'lwp'} = 1;
+        return;
+    }
+}
+
+### Simple IO::Socket::INET fetching ###
+sub _iosock_fetch {
+    my $self = shift;
+    my %hash = @_;
+
+    my ($to);
+    my $tmpl = {
+        to  => { required => 1, store => \$to }
+    };
+    check( $tmpl, \%hash ) or return;
+
+    my $use_list = {
+        'IO::Socket::INET' => '0.0',
+        'IO::Select'       => '0.0',
+    };
+
+    if( can_load(modules => $use_list) ) {
+        my $sock = IO::Socket::INET->new( 
+            PeerHost => $self->host,
+            ( $self->host =~ /:/ ? () : ( PeerPort => 80 ) ),
+        );
+
+        unless ( $sock ) {
+            return $self->_error(loc("Could not open socket to '%1', '%2'",$self->host,$!));
+        }
+
+        my $fh = FileHandle->new;
+
+        # Check open()
+
+        unless ( $fh->open($to,'>') ) {
+            return $self->_error(loc(
+                 "Could not open '%1' for writing: %2",$to,$!));
+        }
+
+        my $path = File::Spec::Unix->catfile( $self->path, $self->file );
+        my $req = "GET $path HTTP/1.0\x0d\x0aHost: " . $self->host . "\x0d\x0a\x0d\x0a";
+        $sock->send( $req );
+
+        my $select = IO::Select->new( $sock );
+
+        my $resp = '';
+        my $normal = 0;
+        while ( $select->can_read( $TIMEOUT || 60 ) ) {
+          my $ret = $sock->sysread( $resp, 4096, length($resp) );
+          if ( !defined $ret or $ret == 0 ) {
+            $select->remove( $sock );
+            $normal++;
+          }
+        }
+        close $sock;
+
+        unless ( $normal ) {
+            return $self->_error(loc("Socket timed out after '%1' seconds", ( $TIMEOUT || 60 )));
+        }
+
+        # Check the "response"
+        # Strip preceeding blank lines apparently they are allowed (RFC 2616 4.1)
+        $resp =~ s/^(\x0d?\x0a)+//;
+        # Check it is an HTTP response
+        unless ( $resp =~ m!^HTTP/(\d+)\.(\d+)!i ) {
+            return $self->_error(loc("Did not get a HTTP response from '%1'",$self->host));
+        }
+
+        # Check for OK
+        my ($code) = $resp =~ m!^HTTP/\d+\.\d+\s+(\d+)!i;
+        unless ( $code eq '200' ) {
+            return $self->_error(loc("Got a '%1' from '%2' expected '200'",$code,$self->host));
+        }
+
+        print $fh +($resp =~ m/\x0d\x0a\x0d\x0a(.*)$/s )[0];
+        close $fh;
+        return $to;
+
+    } else {
+        $METHOD_FAIL->{'iosock'} = 1;
         return;
     }
 }
@@ -1014,6 +1223,15 @@ sub _rsync_fetch {
 #
 #################################
 
+=pod
+
+=head2 $ff->error([BOOL])
+
+Returns the last encountered error as string.
+Pass it a true value to get the C<Carp::longmess()> output instead.
+
+=cut
+
 ### error handling the way Archive::Extract does it
 sub _error {
     my $self    = shift;
@@ -1036,6 +1254,205 @@ sub error {
 
 
 1;
+
+=pod
+
+=head1 HOW IT WORKS
+
+File::Fetch is able to fetch a variety of uris, by using several
+external programs and modules.
+
+Below is a mapping of what utilities will be used in what order
+for what schemes, if available:
+
+    file    => LWP, lftp, file
+    http    => LWP, wget, curl, lftp, lynx, iosock
+    ftp     => LWP, Net::FTP, wget, curl, lftp, ncftp, ftp
+    rsync   => rsync
+
+If you'd like to disable the use of one or more of these utilities
+and/or modules, see the C<$BLACKLIST> variable further down.
+
+If a utility or module isn't available, it will be marked in a cache
+(see the C<$METHOD_FAIL> variable further down), so it will not be
+tried again. The C<fetch> method will only fail when all options are
+exhausted, and it was not able to retrieve the file.
+
+C<iosock> is a very limited L<IO::Socket::INET> based mechanism for
+retrieving C<http> schemed urls. It doesn't follow redirects for instance.
+
+A special note about fetching files from an ftp uri:
+
+By default, all ftp connections are done in passive mode. To change
+that, see the C<$FTP_PASSIVE> variable further down.
+
+Furthermore, ftp uris only support anonymous connections, so no
+named user/password pair can be passed along.
+
+C</bin/ftp> is blacklisted by default; see the C<$BLACKLIST> variable
+further down.
+
+=head1 GLOBAL VARIABLES
+
+The behaviour of File::Fetch can be altered by changing the following
+global variables:
+
+=head2 $File::Fetch::FROM_EMAIL
+
+This is the email address that will be sent as your anonymous ftp
+password.
+
+Default is C<File-Fetch@example.com>.
+
+=head2 $File::Fetch::USER_AGENT
+
+This is the useragent as C<LWP> will report it.
+
+Default is C<File::Fetch/$VERSION>.
+
+=head2 $File::Fetch::FTP_PASSIVE
+
+This variable controls whether the environment variable C<FTP_PASSIVE>
+and any passive switches to commandline tools will be set to true.
+
+Default value is 1.
+
+Note: When $FTP_PASSIVE is true, C<ncftp> will not be used to fetch
+files, since passive mode can only be set interactively for this binary
+
+=head2 $File::Fetch::TIMEOUT
+
+When set, controls the network timeout (counted in seconds).
+
+Default value is 0.
+
+=head2 $File::Fetch::WARN
+
+This variable controls whether errors encountered internally by
+C<File::Fetch> should be C<carp>'d or not.
+
+Set to false to silence warnings. Inspect the output of the C<error()>
+method manually to see what went wrong.
+
+Defaults to C<true>.
+
+=head2 $File::Fetch::DEBUG
+
+This enables debugging output when calling commandline utilities to
+fetch files.
+This also enables C<Carp::longmess> errors, instead of the regular
+C<carp> errors.
+
+Good for tracking down why things don't work with your particular
+setup.
+
+Default is 0.
+
+=head2 $File::Fetch::BLACKLIST
+
+This is an array ref holding blacklisted modules/utilities for fetching
+files with.
+
+To disallow the use of, for example, C<LWP> and C<Net::FTP>, you could
+set $File::Fetch::BLACKLIST to:
+
+    $File::Fetch::BLACKLIST = [qw|lwp netftp|]
+
+The default blacklist is [qw|ftp|], as C</bin/ftp> is rather unreliable.
+
+See the note on C<MAPPING> below.
+
+=head2 $File::Fetch::METHOD_FAIL
+
+This is a hashref registering what modules/utilities were known to fail
+for fetching files (mostly because they weren't installed).
+
+You can reset this cache by assigning an empty hashref to it, or
+individually remove keys.
+
+See the note on C<MAPPING> below.
+
+=head1 MAPPING
+
+
+Here's a quick mapping for the utilities/modules, and their names for
+the $BLACKLIST, $METHOD_FAIL and other internal functions.
+
+    LWP         => lwp
+    Net::FTP    => netftp
+    wget        => wget
+    lynx        => lynx
+    ncftp       => ncftp
+    ftp         => ftp
+    curl        => curl
+    rsync       => rsync
+    lftp        => lftp
+    IO::Socket  => iosock
+
+=head1 FREQUENTLY ASKED QUESTIONS
+
+=head2 So how do I use a proxy with File::Fetch?
+
+C<File::Fetch> currently only supports proxies with LWP::UserAgent.
+You will need to set your environment variables accordingly. For
+example, to use an ftp proxy:
+
+    $ENV{ftp_proxy} = 'foo.com';
+
+Refer to the LWP::UserAgent manpage for more details.
+
+=head2 I used 'lynx' to fetch a file, but its contents is all wrong!
+
+C<lynx> can only fetch remote files by dumping its contents to C<STDOUT>,
+which we in turn capture. If that content is a 'custom' error file
+(like, say, a C<404 handler>), you will get that contents instead.
+
+Sadly, C<lynx> doesn't support any options to return a different exit
+code on non-C<200 OK> status, giving us no way to tell the difference
+between a 'successfull' fetch and a custom error page.
+
+Therefor, we recommend to only use C<lynx> as a last resort. This is 
+why it is at the back of our list of methods to try as well.
+
+=head2 Files I'm trying to fetch have reserved characters or non-ASCII characters in them. What do I do?
+
+C<File::Fetch> is relatively smart about things. When trying to write 
+a file to disk, it removes the C<query parameters> (see the 
+C<output_file> method for details) from the file name before creating
+it. In most cases this suffices.
+
+If you have any other characters you need to escape, please install 
+the C<URI::Escape> module from CPAN, and pre-encode your URI before
+passing it to C<File::Fetch>. You can read about the details of URIs 
+and URI encoding here:
+
+  http://www.faqs.org/rfcs/rfc2396.html
+
+=head1 TODO
+
+=over 4
+
+=item Implement $PREFER_BIN
+
+To indicate to rather use commandline tools than modules
+
+=back
+
+=head1 BUG REPORTS
+
+Please report bugs or other issues to E<lt>bug-file-fetch@rt.cpan.org<gt>.
+
+=head1 AUTHOR
+
+This module by Jos Boumans E<lt>kane@cpan.orgE<gt>.
+
+=head1 COPYRIGHT
+
+This library is free software; you may redistribute and/or modify it 
+under the same terms as Perl itself.
+
+
+=cut
 
 # Local variables:
 # c-indentation-style: bsd

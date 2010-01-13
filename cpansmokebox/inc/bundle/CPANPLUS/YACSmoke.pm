@@ -35,7 +35,7 @@ our %EXPORT_TAGS = (
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT    = ( @{ $EXPORT_TAGS{'default'} } );
 
-$VERSION = '0.45_01';
+$VERSION = '0.46';
 
 {
   my %Checked;
@@ -389,3 +389,214 @@ sub _get_build_dir {
 1;
 __END__
 
+=head1 NAME
+
+CPANPLUS::YACSmoke - Yet Another CPANPLUS Smoke Tester
+
+=head1 SYNOPSIS
+
+  perl -MCPANPLUS::YACSmoke -e test
+
+=head1 DESCRIPTION
+
+CPANPLUS::YACSmoke is an enhancement of the venerable L<CPAN::YACSmoke> that uses the API backend of L<CPANPLUS>
+to run tests on CPAN modules and post results to the CPAN Testers list.
+
+L<CPANPLUS::Dist::YACSmoke> is loaded into the L<CPANPLUS> configuration before any modules are tested.
+
+It will create a database file in the F<.cpanplus> directory, which it
+uses to track tested distributions.  This information will be used to
+keep from posting multiple reports for the same module, and to keep
+from testing modules that use non-passing modules as prerequisites.
+
+If C<prereqs> have been tested previously and have resulted in a C<pass> grade then the tests for those 
+C<prereqs> will be skipped, speeding up smoke testing.
+
+By default it uses L<CPANPLUS> configuration settings.
+
+=head1 CONFIGURATION FILE
+
+CPANPLUS::YACSmoke only honours the C<exclude_dists> in L<CPAN::YACSmoke> style C<ini> files.
+
+The C<exclude_dists> setting, which is laid out as:
+
+  [CONFIG]
+  exclude_dists=<<HERE
+  mod_perl
+  HERE
+
+The above would then ignore any distribution that includes the string
+'mod_perl' in its name. This is useful for distributions which use
+external C libraries, which are not installed, or for which testing
+is problematic.
+
+See L<Config::IniFiles> for more information on the INI file format.
+
+=head1 PROCEDURAL INTERFACE
+
+=head2 EXPORTS
+
+The following routines are exported by default.  They are intended to
+be called from the command-line, though they could be used from a
+script.
+
+=over
+
+=item test( [ $dist [, $dist .... ] ] )
+
+  perl -MCPANPLUS::YACSmoke -e test
+
+  perl -MCPANPLUS::YACSmoke -e test('R/RR/RRWO/Some-Dist-0.01.tar.gz')
+
+Runs tests on CPAN distributions. Arguments should be paths of
+individual distributions in the author directories.  If no arguments
+are given, it will download the F<RECENT> file from CPAN and use that.
+
+By default it uses CPANPLUS configuration settings. If CPANPLUS is set
+not to send test reports, then it will not send test reports.
+
+=item mark( $dist [, $grade ] ] )
+
+  perl -MCPANPLUS::YACSmoke -e mark('Some-Dist-0.01')
+
+  perl -MCPANPLUS::YACSmoke -e mark('Some-Dist-0.01', 'fail')
+
+Retrieves the test result in the database, or changes the test result.
+
+It can be useful to update the status of a distribution that once
+failed or was untestable but now works, so as to test modules which
+make use of it.
+
+Grades can be one of (case insensitive):
+
+  aborted  = tests aborted (uninstallable prereqs or other failure in test)
+  pass     = passed tests
+  fail     = failed tests
+  unknown  = no tests available
+  na       = not applicable to platform or installed libraries
+  ungraded = no grade (test possibly aborted by user)
+  none     = undefines a grade
+  ignored  = package was ignored (a newer version was tested)
+
+=item excluded( [ $dist [, $dist ... ] ] )
+
+  perl -MCPANPLUS::YACSmoke -e excluded('Some-Dist-0.01')
+
+  perl -MCPANPLUS::YACSmoke -e excluded()
+
+Given a list of distributions, indicates which ones would be excluded from
+testing, based on the exclude_dist list that is created.
+
+=item purge( [ \%config, ] [ $dist [, $dist ... ] ] )
+
+  perl -MCPANPLUS::YACSmoke -e purge()
+
+  perl -MCPANPLUS::YACSmoke -e purge('Some-Dist-0.01')
+
+Purges the entries from the local cpansmoke database. The criteria for purging
+is that a distribution must have a more recent version, which has previously
+been marked as a PASS. However, if one or more distributions are passed as a
+parameter list, those specific distributions will be purged.
+
+If the flush_flag is set, via the config hashref, to a true value, the directory 
+path created for each older copy of a distribution is deleted.
+
+=item flush( [ 'all' | 'old' ]  )
+
+  perl -MCPAN::YACSmoke -e flush()
+  
+  perl -MCPAN::YACSmoke -e flush('all')
+
+  perl -MCPAN::YACSmoke -e flush('old')
+
+Removes unrequired build directories from the designated CPANPLUS build
+directory. Note that this deletes directories regardless of whether the 
+associated distribution was tested.
+
+Default flush is 'all'. The 'old' option will only delete the older 
+distributions, of multiple instances of a distribution.
+
+Note that this cannot be done reliably using last access or modify time, as
+the intention is for this distribution to be used on any OS that CPANPLUS
+is installed on. In this case not all OSs support the full range of return
+values from the stat function.
+
+=back
+
+=head1 OBJECT INTERFACE
+
+Each of the procedural interface functions are available as methods of a CPANPLUS::YACSmoke object.
+
+=over
+
+=item C<new>
+
+The object interface is created normally through the test() or mark() functions of the procedural interface. 
+
+=back 
+
+=head1 ENVIRONMENT VARIABLES
+
+The following environment variables affect the operation of this module:
+
+=over
+
+=item C<PERL5_YACSMOKE_BASE>
+
+Loaded into L<CPANPLUS> by L<CPANPLUS::Config::YACSmoke>, sets the basedir where L<CPANPLUS> and
+CPANPLUS::YACSmoke related modules find the C<.cpanplus> directory for their settings
+
+  export PERL5_YACSMOKE_BASE=/home/moo/perls/conf/perl-5.8.9/
+
+Would set the base dir to C</home/moo/perls/conf/perl-5.8.9/.cpanplus/>
+
+=back
+
+Several environment variables get set by the module:
+
+=over
+
+=item C<AUTOMATED_TESTING>
+
+Set to 1 to indicate that we are currently running in an automated testing environment
+
+=item C<PERL_MM_USE_DEFAULT>
+
+Set to 1 MakeMaker and Module::Build's prompt functions will always return the default 
+without waiting for user input.
+
+=item C<MAILDOMAIN>
+
+L<Test::Reporter> uses this. YACSmoke will set this if it isn't already set. It will try to determine
+the domain from the C<email> setting in L<CPANPLUS>. If this is C<cpan.org> it will default to 
+C<cpantesters.org> ( the perl.org MX doesn't like people trying to impersonate it, for obvious reasons ).
+
+=back
+
+=head1 AUTHOR
+
+Chris C<BinGOs> Williams <chris@bingosnet.co.uk>
+
+Based on L<CPAN::YACSmoke> by Robert Rothenberg and Barbie.
+
+Contributions and patience from Jos Boumans the L<CPANPLUS> guy!
+
+=head1 LICENSE
+
+Copyright E<copy> Chris Williams, Jos Boumans, Robert Rothenberg and Barbie.
+
+This module may be used, modified, and distributed under the same terms as Perl itself. Please see the license that came with your Perl distribution for details.
+
+=head1 SEE ALSO
+
+L<CPANPLUS>
+
+L<CPANPLUS::Dist::YACSmoke>
+
+L<CPANPLUS::Config::YACSmoke>
+
+L<CPAN::YACSmoke>
+
+L<Test::Reporter>
+
+=cut

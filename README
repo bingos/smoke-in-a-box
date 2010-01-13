@@ -28,8 +28,6 @@ DESCRIPTION
 
       CPANPLUS::YACSmoke
 
-      YAML::Tiny
-
       Test::Reporter
 
       Sort::Versions
