@@ -1,6 +1,10 @@
 Changelog for Smoke-In-A-Box
 ============================
 
+0.24  Fri Jul 16 20:37:09 BST 2010
+  - updated CPANPLUS to 0.9007
+  - updated bundled modules
+
 0.22  Tue Mar 16 15:32:38 GMT 2010
   - updated CPANPLUS to 0.9003
   - updated bundled modules

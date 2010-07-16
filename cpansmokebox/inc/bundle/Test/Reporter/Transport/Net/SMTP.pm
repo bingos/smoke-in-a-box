@@ -9,10 +9,10 @@
 use strict;
 BEGIN{ if (not $] < 5.006) { require warnings; warnings->import } }
 package Test::Reporter::Transport::Net::SMTP;
+our $VERSION = '1.57';
+# ABSTRACT: SMTP transport for Test::Reporter
+
 use base 'Test::Reporter::Transport';
-use vars qw/$VERSION/;
-$VERSION = '1.56';
-$VERSION = eval $VERSION;
 
 sub new {
     my ($class, @args) = @_;
@@ -144,6 +144,7 @@ sub send {
     my ($self, $report, $recipients) = @_;
     $recipients ||= [];
 
+    my $perl_version = $report->perl_version->{_version};
     my $helo          = $report->_maildomain(); # XXX: tight -- rjbs, 2008-04-06
     my $from          = $report->from();
     my $via           = $report->via();
@@ -226,6 +227,7 @@ sub send {
         if ( @$recipients ) { $smtp->datasend("Cc: $cc_str\n") or $die->() };
         $smtp->datasend("Message-ID: ", $report->message_id(), "\n") or $die->();
         $smtp->datasend("X-Reported-Via: Test::Reporter $Test::Reporter::VERSION$via\n") or $die->();
+        $smtp->datasend("X-Test-Reporter-Perl: $perl_version\n") or $die->();
         if ( $needs_qp ) {
             $smtp->datasend("MIME-Version: 1.0\n");
             $smtp->datasend("Content-Type: text/plain; charset=utf-8\n");
@@ -251,11 +253,11 @@ sub send {
 
 =head1 NAME
 
-Test::Reporter::Transport::Net::SMTP
+Test::Reporter::Transport::Net::SMTP - SMTP transport for Test::Reporter
 
 =head1 VERSION
 
-version 1.56
+version 1.57
 
 =head1 SYNOPSIS
 
@@ -266,10 +268,6 @@ version 1.56
 =head1 DESCRIPTION
 
 This module transmits a Test::Reporter report using Net::SMTP.
-
-=head1 NAME
-
-Test::Reporter::Transport::Net::SMTP - SMTP transport for Test::Reporter
 
 =head1 USAGE
 

@@ -9,10 +9,10 @@
 use strict;
 BEGIN{ if (not $] < 5.006) { require warnings; warnings->import } }
 package Test::Reporter::Transport::File;
+our $VERSION = '1.57';
+# ABSTRACT: File transport for Test::Reporter
+
 use base 'Test::Reporter::Transport';
-use vars qw/$VERSION/;
-$VERSION = '1.56';
-$VERSION = eval $VERSION;
 
 sub new {
   my ($class, $dir) = @_;
@@ -37,11 +37,11 @@ sub send {
 
 =head1 NAME
 
-Test::Reporter::Transport::File
+Test::Reporter::Transport::File - File transport for Test::Reporter
 
 =head1 VERSION
 
-version 1.56
+version 1.57
 
 =head1 SYNOPSIS
 
@@ -59,10 +59,6 @@ This lets you save reports during offline operation.  The files may later be
 uploaded using C<< Test::Reporter->read() >>.
 
     Test::Reporter->new->read( $file )->send();
-
-=head1 NAME
-
-Test::Reporter::Transport::File - File transport for Test::Reporter
 
 =head1 USAGE
 

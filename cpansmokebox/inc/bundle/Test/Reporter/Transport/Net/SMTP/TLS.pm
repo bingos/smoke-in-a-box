@@ -9,10 +9,10 @@
 use strict;
 BEGIN{ if (not $] < 5.006) { require warnings; warnings->import } }
 package Test::Reporter::Transport::Net::SMTP::TLS;
+our $VERSION = '1.57';
+# ABSTRACT: Authenticated SMTP transport for Test::Reporter
+
 use base 'Test::Reporter::Transport::Net::SMTP';
-use vars qw/$VERSION/;
-$VERSION = '1.56';
-$VERSION = eval $VERSION;
 
 use Net::SMTP::TLS;
 
@@ -24,11 +24,11 @@ use Net::SMTP::TLS;
 
 =head1 NAME
 
-Test::Reporter::Transport::Net::SMTP::TLS
+Test::Reporter::Transport::Net::SMTP::TLS - Authenticated SMTP transport for Test::Reporter
 
 =head1 VERSION
 
-version 1.56
+version 1.57
 
 =head1 SYNOPSIS
 
@@ -40,10 +40,6 @@ version 1.56
 =head1 DESCRIPTION
 
 This module transmits a Test::Reporter report using Net::SMTP::TLS.
-
-=head1 NAME
-
-Test::Reporter::Transport::Net::SMTP::TLS - Authenticated SMTP transport for Test::Reporter
 
 =head1 USAGE
 

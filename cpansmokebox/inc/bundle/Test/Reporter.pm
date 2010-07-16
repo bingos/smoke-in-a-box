@@ -6,10 +6,13 @@
 # This is free software; you can redistribute it and/or modify it under
 # the same terms as the Perl 5 programming language system itself.
 # 
-package Test::Reporter;
-use 5.005;
+use 5.006;
 use strict;
-BEGIN{ if (not $] < 5.006) { require warnings; warnings->import } }
+use warnings;
+package Test::Reporter;
+our $VERSION = '1.57';
+# ABSTRACT: sends test results to cpan-testers@perl.org
+
 use Cwd;
 use Config;
 use Carp;
@@ -18,12 +21,10 @@ use FileHandle;
 use File::Temp;
 use Sys::Hostname;
 use Time::Local ();
-use vars qw($VERSION $AUTOLOAD $Tempfile $Report $DNS $Domain $Send);
+use vars qw($AUTOLOAD $Tempfile $Report $DNS $Domain $Send);
 use constant FAKE_NO_NET_DNS => 0;    # for debugging only
 use constant FAKE_NO_NET_DOMAIN => 0; # for debugging only
 use constant FAKE_NO_MAIL_SEND => 0;  # for debugging only
-
-$VERSION = '1.56';
 
 local $^W = 1;
 
@@ -51,7 +52,6 @@ sub new {
         '_perl_version'      => {
             '_archname' => $Config{archname},
             '_osvers'   => $Config{osvers},
-            '_myconfig' => Config::myconfig(),
         },
         '_transport'         => '',
         '_transport_args'    => [],
@@ -59,6 +59,9 @@ sub new {
     };
 
     bless $self, $class;
+
+    $self->{_perl_version}{_myconfig} = $self->_get_perl_V;
+    $self->{_perl_version}{_version} = $self->_normalize_perl_version;
 
     $self->{_attr} = {   
         map {$_ => 1} qw(   
@@ -191,7 +194,7 @@ sub grade {
 }
 
 sub transport {
-    my $self = shift;
+  my $self = shift;
     warn __PACKAGE__, ": transport\n" if $self->debug();
 
     return $self->{_transport} unless scalar @_;
@@ -281,6 +284,15 @@ sub send {
     return 1;
 }
 
+sub _normalize_perl_version {
+  my $self = shift;
+  my $perl_version = sprintf("v%vd",$^V);
+  my $perl_V = $self->perl_version->{_myconfig};
+  my ($rc) = $perl_V =~ /Locally applied patches:\n\s+(RC\d+)/m;
+  $perl_version .= " $rc" if $rc;
+  return $perl_version;
+}
+
 sub write {
     my $self = shift;
     warn __PACKAGE__, ": write\n" if $self->debug();
@@ -292,6 +304,7 @@ sub write {
     my $grade = $self->grade();
     my $dir = $self->dir() || cwd;
     my $distfile = $self->{_distfile} || '';
+    my $perl_version = $self->perl_version->{_version};
 
     return unless $self->_verify();
 
@@ -320,6 +333,7 @@ sub write {
     if ($distfile ne '') {
       print $fh "X-Test-Reporter-Distfile: $distfile\n";
     }
+    print $fh "X-Test-Reporter-Perl: $perl_version\n";
     print $fh "Subject: $subject\n";
     print $fh "Report: $report";
     unless ($_[0]) {
@@ -367,6 +381,8 @@ sub read {
           $self->{_subject_lock} = 1;
         } elsif ($header eq "X-Test-Reporter-Distfile") {
           $self->{_distfile} = $content;
+        } elsif ($header eq "X-Test-Reporter-Perl") {
+          $self->{_perl_version}{_version} = $content;
         } elsif ($header eq "Report") {
           last;
         }
@@ -377,7 +393,7 @@ sub read {
     if ( $self->{_from} && $self->{_subject} ) {
       ($self->{_report}) = ($buffer =~ /^.+?Report:\s(.+)$/s);
       my ($perlv) = $self->{_report} =~ /(^Summary of my perl5.*)\z/ms;
-      $self->{_myconfig} = $perlv if $perlv;
+      $self->{_perl_version}{_myconfig} = $perlv if $perlv;
       $self->{_report_lock} = 1;
     }
 
@@ -481,6 +497,9 @@ sub transport_args {
     return @{ $self->{_transport_args} };
 }
 
+# quote for command-line perl
+sub _get_sh_quote { ( ($^O eq "MSWin32") || ($^O eq 'VMS') ) ? '"' : "'" }
+
 
 sub perl_version  {
     my $self = shift;
@@ -488,21 +507,38 @@ sub perl_version  {
 
     if( @_) {
         my $perl = shift;
-        my $q = ( ($^O eq "MSWin32") || ($^O eq 'VMS') ) ? '"' : "'"; # quote for command-line perl
+        my $q = $self->_get_sh_quote; 
         my $magick = int(rand(1000));                                 # just to check that we get a valid result back
-        my $cmd  = "$perl -MConfig -e$q print qq{$magick\n\$Config{archname}\n\$Config{osvers}\n},Config::myconfig();$q";
+        my $cmd  = "$perl -MConfig -e$q print qq{$magick\n\$Config{archname}\n\$Config{osvers}\n};$q";
         if($^O eq 'VMS'){
             my $sh = $Config{'sh'};
-            $cmd  = "$sh $perl $q-MConfig$q -e$q print qq{$magick\\n\$Config{archname}\\n\$Config{osvers}\\n},Config::myconfig();$q";
+            $cmd  = "$sh $perl $q-MConfig$q -e$q print qq{$magick\\n\$Config{archname}\\n\$Config{osvers}\\n};$q";
         }
         my $conf = `$cmd`;
+        chomp $conf;
         my %conf;
-        ( @conf{ qw( magick _archname _osvers _myconfig) } ) = split( /\n/, $conf, 4);
+        ( @conf{ qw( magick _archname _osvers) } ) = split( /\n/, $conf, 3);
         croak __PACKAGE__, ": cannot get perl version info from $perl: $conf" if( $conf{magick} ne $magick);
         delete $conf{magick};
+        $conf{_myconfig} = $self->_get_perl_V($perl);
+        chomp $conf;
         $self->{_perl_version} = \%conf;
    }
    return $self->{_perl_version};
+}
+
+sub _get_perl_V {
+    my $self = shift;
+    my $perl ||= $^X;
+    my $q = $self->_get_sh_quote; 
+    my $cmdv = "$perl -V";
+    if($^O eq 'VMS'){
+        my $sh = $Config{'sh'};
+        $cmdv = "$sh $perl $q-V$q";
+    }
+    my $perl_V = `$cmdv`;
+    chomp $perl_V;
+    return $perl_V;
 }
 
 sub AUTOLOAD {
@@ -743,11 +779,11 @@ sub _is_a_perl_release {
 
 =head1 NAME
 
-Test::Reporter
+Test::Reporter - sends test results to cpan-testers@perl.org
 
 =head1 VERSION
 
-version 1.56
+version 1.57
 
 =head1 SYNOPSIS
 
@@ -785,10 +821,6 @@ version 1.56
 Test::Reporter reports the test results of any given distribution to the CPAN
 Testers project. Test::Reporter has wide support for various perl5's and
 platforms. 
-
-=head1 NAME
-
-Test::Reporter - sends test results to cpan-testers@perl.org
 
 =head1 METHODS
 

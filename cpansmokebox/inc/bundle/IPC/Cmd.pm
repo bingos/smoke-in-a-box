@@ -16,7 +16,7 @@ BEGIN {
                         $USE_IPC_RUN $USE_IPC_OPEN3 $CAN_USE_RUN_FORKED $WARN
                     ];
 
-    $VERSION        = '0.56';
+    $VERSION        = '0.60';
     $VERBOSE        = 0;
     $DEBUG          = 0;
     $WARN           = 1;
@@ -32,6 +32,7 @@ BEGIN {
         require FileHandle; FileHandle->import();
         require Socket; Socket->import();
         require Time::HiRes; Time::HiRes->import();
+        require Win32 if IS_WIN32;
     };
     $CAN_USE_RUN_FORKED = $@ || !IS_VMS && !IS_WIN32;
 
@@ -216,8 +217,9 @@ sub can_run {
         for my $dir (
             (split /\Q$Config::Config{path_sep}\E/, $ENV{PATH}),
             File::Spec->curdir
-        ) {           
-            my $abs = File::Spec->catfile($dir, $command);
+        ) {
+            next if ! $dir || ! -d $dir;
+            my $abs = File::Spec->catfile( IS_WIN32 ? Win32::GetShortPathName( $dir ) : $dir, $command);
             return $abs if $abs = MM->maybe_command($abs);
         }
     }
@@ -340,25 +342,89 @@ sub can_use_run_forked {
     return $CAN_USE_RUN_FORKED eq "1";
 }
 
+# incompatible with POSIX::SigAction
+#
+sub install_layered_signal {
+  my ($s, $handler_code) = @_;
+
+  my %available_signals = map {$_ => 1} keys %SIG;
+
+  die("install_layered_signal got nonexistent signal name [$s]")
+    unless defined($available_signals{$s});
+  die("install_layered_signal expects coderef")
+    if !ref($handler_code) || ref($handler_code) ne 'CODE';
+
+  my $previous_handler = $SIG{$s};
+
+  my $sig_handler = sub {
+    my ($called_sig_name, @sig_param) = @_;
+    
+    # $s is a closure refering to real signal name
+    # for which this handler is being installed.
+    # it is used to distinguish between
+    # real signal handlers and aliased signal handlers
+    my $signal_name = $s;
+
+    # $called_sig_name is a signal name which
+    # was passed to this signal handler;
+    # it doesn't equal $signal_name in case
+    # some signal handlers in %SIG point
+    # to other signal handler (CHLD and CLD,
+    # ABRT and IOT)
+    #
+    # initial signal handler for aliased signal
+    # calles some other signal handler which
+    # should not execute the same handler_code again
+    if ($called_sig_name eq $signal_name) {
+      $handler_code->($signal_name);
+    }
+
+    # run original signal handler if any (including aliased)
+    #
+    if (ref($previous_handler)) {
+      $previous_handler->($called_sig_name, @sig_param);
+    }
+  };
+
+  $SIG{$s} = $sig_handler;
+}
+
 # give process a chance sending TERM,
 # waiting for a while (2 seconds)
 # and killing it with KILL
 sub kill_gently {
-  my ($pid) = @_;
+  my ($pid, $opts) = @_;
   
-  kill(15, $pid);
+  $opts = {} unless $opts;
+  $opts->{'wait_time'} = 2 unless defined($opts->{'wait_time'});
+  $opts->{'first_kill_type'} = 'just_process' unless $opts->{'first_kill_type'};
+  $opts->{'final_kill_type'} = 'just_process' unless $opts->{'final_kill_type'};
   
-  my $wait_cycles = 0;
+  if ($opts->{'first_kill_type'} eq 'just_process') {
+    kill(15, $pid);
+  }
+  elsif ($opts->{'first_kill_type'} eq 'process_group') {
+    kill(-15, $pid);
+  }
+  
   my $child_finished = 0;
+  my $wait_start_time = time();
 
-  while (!$child_finished && $wait_cycles < 8) {
+  while (!$child_finished && $wait_start_time + $opts->{'wait_time'} > time()) {
     my $waitpid = waitpid($pid, WNOHANG);
     if ($waitpid eq -1) {
       $child_finished = 1;
     }
+    Time::HiRes::usleep(250000); # quarter of a second
+  }
 
-    $wait_cycles = $wait_cycles + 1;
-    Time::HiRes::usleep(250000); # half a second
+  if (!$child_finished) {
+    if ($opts->{'final_kill_type'} eq 'just_process') {
+      kill(9, $pid);
+    }
+    elsif ($opts->{'final_kill_type'} eq 'process_group') {
+      kill(-9, $pid);
+    }
   }
 }
 
@@ -450,9 +516,16 @@ sub open3_run {
     }
 
     if ($got_sig_child) {
-      if (time() - $got_sig_child > 10) {
-        print STDERR "select->can_read did not return 0 for 10 seconds after SIG_CHLD, killing [$pid]\n";
-        kill (-9, $pid);
+      if (time() - $got_sig_child > 1) {
+        # select->can_read doesn't return 0 after SIG_CHLD
+        #
+        # "On POSIX-compliant platforms, SIGCHLD is the signal
+        # sent to a process when a child process terminates."
+        # http://en.wikipedia.org/wiki/SIGCHLD
+        #
+        # nevertheless kill KILL wouldn't break anything here
+        #
+        kill (9, $pid);
         $child_finished = 1;
       }
     }
@@ -487,8 +560,9 @@ sub open3_run {
 
   waitpid($pid, 0);
 
-  # i've successfully reaped my child,
-  # let my parent know this
+  # since we've successfully reaped the child,
+  # let our parent know about this.
+  #
   if ($opts->{'parent_info'}) {
     my $ps = $opts->{'parent_info'};
     print $ps "reaped $pid\n";
@@ -512,7 +586,7 @@ sub open3_run {
 
 C<run_forked> is used to execute some program or a coderef,
 optionally feed it with some input, get its return code
-and output (both stdout and stderr into seperate buffers).
+and output (both stdout and stderr into separate buffers).
 In addition it allows to terminate the program
 which take too long to finish.
 
@@ -559,6 +633,17 @@ stdout from the executing program.
 You may provide a coderef of a subroutine that will be called a portion of data is received on 
 stderr from the executing program.
 
+=item C<discard_output>
+
+Discards the buffering of the standard output and standard errors for return by run_forked(). 
+With this option you have to use the std*_handlers to read what the command outputs. 
+Useful for commands that send a lot of output.
+
+=item C<terminate_on_parent_sudden_death>
+
+Enable this option if you wish all spawned processes to be killed if the initially spawned
+process (the parent) is killed or dies without waiting for child processes.
+
 =back
 
 C<run_forked> will return a HASHREF with the following keys:
@@ -576,17 +661,17 @@ The number of seconds the program ran for before being terminated, or 0 if no ti
 =item C<stdout>
 
 Holds the standard output of the executed command
-(or empty string if there were no stdout output; it's always defined!)
+(or empty string if there were no stdout output or if discard_output was used; it's always defined!)
 
 =item C<stderr>
 
 Holds the standard error of the executed command
-(or empty string if there were no stderr output; it's always defined!)
+(or empty string if there were no stderr output or if discard_output was used; it's always defined!)
 
 =item C<merged>
 
 Holds the standard output and error of the executed command merged into one stream
-(or empty string if there were no output at all; it's always defined!)
+(or empty string if there were no output at all or if discard_output was used; it's always defined!)
 
 =item C<err_msg>
 
@@ -614,6 +699,7 @@ sub run_forked {
 
     $opts = {} unless $opts;
     $opts->{'timeout'} = 0 unless $opts->{'timeout'};
+    $opts->{'terminate_wait_time'} = 2 unless defined($opts->{'terminate_wait_time'});
 
     # sockets to pass child stdout to parent
     my $child_stdout_socket;
@@ -651,7 +737,6 @@ sub run_forked {
       close($parent_stderr_socket);
       close($parent_info_socket);
 
-      my $child_timedout = 0;
       my $flags;
 
       # prepare sockets to read from child
@@ -673,21 +758,45 @@ sub run_forked {
 
   #    print "child $pid started\n";
 
+      my $child_timedout = 0;
       my $child_finished = 0;
       my $child_stdout = '';
       my $child_stderr = '';
       my $child_merged = '';
       my $child_exit_code = 0;
+      my $parent_died = 0;
 
       my $got_sig_child = 0;
+      my $got_sig_quit = 0;
       $SIG{'CHLD'} = sub { $got_sig_child = time(); };
+
+      if ($opts->{'terminate_on_signal'}) {
+        install_layered_signal($opts->{'terminate_on_signal'}, sub { $got_sig_quit = time(); });
+      }
 
       my $child_child_pid;
 
       while (!$child_finished) {
+        my $now = time();
+
+        if ($opts->{'terminate_on_parent_sudden_death'}) {
+          $opts->{'runtime'}->{'last_parent_check'} = 0
+            unless defined($opts->{'runtime'}->{'last_parent_check'});
+
+          # check for parent once each five seconds
+          if ($now - $opts->{'runtime'}->{'last_parent_check'} > 5) {
+            if (getppid() eq "1") {
+              kill (-9, $pid);
+              $parent_died = 1;
+            }
+
+            $opts->{'runtime'}->{'last_parent_check'} = $now;
+          }
+        }
+
         # user specified timeout
         if ($opts->{'timeout'}) {
-          if (time() - $start_time > $opts->{'timeout'}) {
+          if ($now - $start_time > $opts->{'timeout'}) {
             kill (-9, $pid);
             $child_timedout = 1;
           }
@@ -697,11 +806,20 @@ sub run_forked {
         # kill process after that and finish wait loop;
         # shouldn't ever happen -- remove this code?
         if ($got_sig_child) {
-          if (time() - $got_sig_child > 10) {
+          if ($now - $got_sig_child > 10) {
             print STDERR "waitpid did not return -1 for 10 seconds after SIG_CHLD, killing [$pid]\n";
             kill (-9, $pid);
             $child_finished = 1;
           }
+        }
+
+        if ($got_sig_quit) {
+          kill_gently ($pid, {
+            'first_kill_type' => 'process_group',
+            'final_kill_type' => 'process_group',
+            'wait_time' => $opts->{'terminate_wait_time'}
+            });
+          $child_finished = 1;
         }
 
         my $waitpid = waitpid($pid, WNOHANG);
@@ -729,17 +847,20 @@ sub run_forked {
         }
 
         while (my $l = <$child_stdout_socket>) {
-          $child_stdout .= $l;
-          $child_merged .= $l;
+          if (!$opts->{'discard_output'}) {
+            $child_stdout .= $l;
+            $child_merged .= $l;
+          }
 
           if ($opts->{'stdout_handler'} && ref($opts->{'stdout_handler'}) eq 'CODE') {
             $opts->{'stdout_handler'}->($l);
           }
         }
         while (my $l = <$child_stderr_socket>) {
-          $child_stderr .= $l;
-          $child_merged .= $l;
-
+          if (!$opts->{'discard_output'}) {
+            $child_stderr .= $l;
+            $child_merged .= $l;
+          }
           if ($opts->{'stderr_handler'} && ref($opts->{'stderr_handler'}) eq 'CODE') {
             $opts->{'stderr_handler'}->($l);
           }
@@ -764,6 +885,23 @@ sub run_forked {
         kill_gently($child_child_pid);
       }
 
+      # in case there are forks in child which
+      # do not forward or process signals (TERM) correctly
+      # kill whole child process group, effectively trying
+      # not to return with some children or their parts still running
+      #
+      # to be more accurate -- we need to be sure
+      # that this is process group created by our child
+      # (and not some other process group with the same pgid,
+      # created just after death of our child) -- fortunately
+      # this might happen only when process group ids
+      # are reused quickly (there are lots of processes
+      # spawning new process groups for example)
+      #
+      if ($opts->{'clean_up_children'}) {
+        kill(-9, $pid);
+      }
+
   #    print "child $pid finished\n";
 
       close($child_stdout_socket);
@@ -776,6 +914,8 @@ sub run_forked {
         'merged' => $child_merged,
         'timeout' => $child_timedout ? $opts->{'timeout'} : 0,
         'exit_code' => $child_exit_code,
+        'parent_died' => $parent_died,
+        'child_pgid' => $pid,
         };
 
       my $err_msg = '';
@@ -784,6 +924,9 @@ sub run_forked {
       }
       if ($o->{'timeout'}) {
         $err_msg .= "ran more than [$o->{'timeout'}] seconds\n";
+      }
+      if ($o->{'parent_died'}) {
+        $err_msg .= "parent died\n";
       }
       if ($o->{'stdout'}) {
         $err_msg .= "stdout:\n" . $o->{'stdout'} . "\n";
@@ -1492,7 +1635,7 @@ You can use it as follows:
   my $cmd = q[echo ] . QUOTE . q[foo bar] . QUOTE;
 
 This makes sure that C<foo bar> is treated as a string, rather than two
-seperate arguments to the C<echo> function.
+separate arguments to the C<echo> function.
 
 __END__
 

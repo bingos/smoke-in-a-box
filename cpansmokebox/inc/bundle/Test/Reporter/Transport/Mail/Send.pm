@@ -9,10 +9,10 @@
 use strict;
 BEGIN{ if (not $] < 5.006) { require warnings; warnings->import } }
 package Test::Reporter::Transport::Mail::Send;
+our $VERSION = '1.57';
+# ABSTRACT: Mail::Send transport for Test::Reporter
+
 use base 'Test::Reporter::Transport';
-use vars qw/$VERSION/;
-$VERSION = '1.56';
-$VERSION = eval $VERSION;
 
 use Mail::Send;
 
@@ -25,6 +25,7 @@ sub send {
     my ($self, $report, $recipients) = @_;
     $recipients ||= [];
 
+    my $perl_version = $report->perl_version->{_version};
     my $via = $report->via();
     my $msg = Mail::Send->new();
 
@@ -41,6 +42,7 @@ sub send {
     $msg->set('From', $report->from());
     $msg->subject($report->subject());
     $msg->add('X-Reported-Via', "Test::Reporter $Test::Reporter::VERSION$via");
+    $msg->add('X-Test-Reporter-Perl', $perl_version);
     $msg->add('Cc', $cc_str) if $cc_str;
 
     my $fh = $msg->open( @{ $self->{args} } );
@@ -58,11 +60,11 @@ sub send {
 
 =head1 NAME
 
-Test::Reporter::Transport::Mail::Send
+Test::Reporter::Transport::Mail::Send - Mail::Send transport for Test::Reporter
 
 =head1 VERSION
 
-version 1.56
+version 1.57
 
 =head1 SYNOPSIS
 
@@ -74,10 +76,6 @@ version 1.56
 =head1 DESCRIPTION
 
 This module transmits a Test::Reporter report using Mail::Send.
-
-=head1 NAME
-
-Test::Reporter::Transport::Mail::Send - Mail::Send transport for Test::Reporter
 
 =head1 USAGE
 

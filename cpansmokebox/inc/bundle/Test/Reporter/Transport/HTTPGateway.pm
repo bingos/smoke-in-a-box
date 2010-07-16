@@ -9,10 +9,10 @@
 use strict;
 BEGIN{ if (not $] < 5.006) { require warnings; warnings->import } }
 package Test::Reporter::Transport::HTTPGateway;
+our $VERSION = '1.57';
+# ABSTRACT: HTTP transport for Test::Reporter
+
 use base 'Test::Reporter::Transport';
-use vars qw/$VERSION/;
-$VERSION = '1.56';
-$VERSION = eval $VERSION;
 
 use LWP::UserAgent;
 
@@ -33,7 +33,7 @@ sub send {
   my $report_version = $report->VERSION;
   my $via = "$report_class $report_version";
   $via .= ', via ' . $report->via if $report->via;
-
+  my $perl_version = $report->perl_version->{_version};
   # post the report
   my $ua = LWP::UserAgent->new;
   $ua->timeout(60);
@@ -42,6 +42,7 @@ sub send {
   my $form = {
     key     => $self->{key},
     via     => $via,
+    perl_version => $perl_version,
     from    => $report->from,
     subject => $report->subject,
     report  => $report->report,
@@ -62,11 +63,11 @@ sub send {
 
 =head1 NAME
 
-Test::Reporter::Transport::HTTPGateway
+Test::Reporter::Transport::HTTPGateway - HTTP transport for Test::Reporter
 
 =head1 VERSION
 
-version 1.56
+version 1.57
 
 =head1 SYNOPSIS
 
@@ -79,10 +80,6 @@ version 1.56
 
 This module transmits a Test::Reporter report via HTTP to a
 L<Test::Reporter::HTTPGateway> server (or something with an equivalent API).
-
-=head1 NAME
-
-Test::Reporter::Transport::HTTPGateway - HTTP transport for Test::Reporter
 
 =head1 USAGE
 
